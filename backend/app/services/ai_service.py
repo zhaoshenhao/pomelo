@@ -69,12 +69,7 @@ async def content_diff(new_text: str, library_texts: dict[str, str]) -> dict:
             max_tokens=4096,
         )
         text = response.choices[0].message.content or "{}"
-        text = text.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1].rsplit("\n", 1)[0] if text.endswith("```") else text
-            if text.startswith("json"):
-                text = text.split("\n", 1)[1]
-        return json.loads(text)
+        return _parse_llm_json(text)
     except Exception as e:
         logger.error("content_diff failed: %s", str(e))
         raise
@@ -129,6 +124,86 @@ def _strip_json_fence(text: str) -> str:
     return text
 
 
+def _escape_raw_newlines_in_strings(text: str) -> str:
+    """Escape literal newlines/control chars inside JSON string values.
+
+    LLMs often emit JSON with raw newlines inside string values, which makes
+    json.loads fail with "Unterminated string". This scans the text tracking
+    string boundaries (and escaped quotes/backslashes) and escapes raw control
+    characters inside strings.
+    """
+    out: list[str] = []
+    in_string = False
+    escaped = False
+    for ch in text:
+        if in_string:
+            if escaped:
+                out.append(ch)
+                escaped = False
+            elif ch == "\\":
+                out.append(ch)
+                escaped = True
+            elif ch == '"':
+                out.append(ch)
+                in_string = False
+            elif ch == "\n":
+                out.append("\\n")
+            elif ch == "\r":
+                out.append("\\r")
+            elif ch == "\t":
+                out.append("\\t")
+            else:
+                out.append(ch)
+        else:
+            if ch == '"':
+                out.append(ch)
+                in_string = True
+            else:
+                out.append(ch)
+    return "".join(out)
+
+
+def _parse_llm_json(raw: str) -> dict:
+    text = _strip_json_fence(raw)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    try:
+        return json.loads(_escape_raw_newlines_in_strings(text))
+    except json.JSONDecodeError as e:
+        logger.error(
+            "LLM JSON parse failed: %s | raw(500): %s",
+            str(e), text[:500].replace("\n", "\\n"),
+        )
+        raise
+
+
+async def _generate_json(client, prompt: str, *, max_tokens: int, temperature: float) -> dict:
+    last_error: Exception | None = None
+    use_json_mode = settings.AI_JSON_MODE
+    for attempt in range(3):
+        kwargs = {
+            "model": settings.DEEPSEEK_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if use_json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+        try:
+            response = await client.chat.completions.create(**kwargs)
+            raw = response.choices[0].message.content or "{}"
+            return _parse_llm_json(raw)
+        except Exception as e:
+            last_error = e
+            if use_json_mode and "response_format" in str(e).lower():
+                use_json_mode = False
+            logger.warning("AI JSON generation attempt %d/3 failed: %s", attempt + 1, str(e))
+    logger.error("AI JSON generation failed after 3 attempts: %s", str(last_error))
+    raise RuntimeError("AI 调用失败，请稍后再试")
+
+
 async def generate_study_material(docs: dict[str, str], style_prompt: str) -> dict:
     client = get_ai_client()
 
@@ -151,15 +226,11 @@ async def generate_study_material(docs: dict[str, str], style_prompt: str) -> di
     )
 
     try:
-        response = await client.chat.completions.create(
-            model=settings.DEEPSEEK_MODEL,
-            messages=[{"role": "user", "content": prompt}],
+        return await _generate_json(
+            client, prompt,
+            max_tokens=settings.AI_STUDY_MAX_TOKENS,
             temperature=settings.AI_TEMPERATURE,
-            max_tokens=settings.AI_MAX_TOKENS,
         )
-        raw = response.choices[0].message.content or "{}"
-        parsed = json.loads(_strip_json_fence(raw))
-        return parsed
     except Exception as e:
         logger.error("generate_study_material failed: %s", str(e))
         raise
@@ -187,15 +258,11 @@ async def generate_exam(docs: dict[str, str], style_prompt: str) -> dict:
     )
 
     try:
-        response = await client.chat.completions.create(
-            model=settings.DEEPSEEK_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
+        return await _generate_json(
+            client, prompt,
             max_tokens=settings.AI_QB_MAX_TOKENS,
+            temperature=0.5,
         )
-        raw = response.choices[0].message.content or "{}"
-        parsed = json.loads(_strip_json_fence(raw))
-        return parsed
     except Exception as e:
         logger.error("generate_exam failed: %s", str(e))
         raise

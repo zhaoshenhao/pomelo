@@ -39,6 +39,8 @@ class Settings(BaseSettings):
 
     AI_MAX_TOKENS: int = 16384
     AI_QB_MAX_TOKENS: int = 256000
+    AI_STUDY_MAX_TOKENS: int = 256000
+    AI_JSON_MODE: bool = True
     AI_DOC_MAX_CHARS: int = 5000
     AI_TOTAL_MAX_CHARS: int = 40000
     AI_TEMPERATURE: float = 0.7

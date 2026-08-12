@@ -299,8 +299,8 @@ _jobs: dict[str, dict] = {}
 
 async def _run_generation(
     job_id: str, name: str, description: str, library_id: int,
-    doc_names_str: str, prompt_text: str, doc_contents: dict, lib_local_path: str,
-    user_id: int,
+    doc_names_str: str, prompt_id: int, prompt_text: str,
+    doc_contents: dict, lib_local_path: str, user_id: int,
 ):
     logger.info("_run_generation started job %s", job_id)
     try:
@@ -309,12 +309,20 @@ async def _run_generation(
             material = StudyMaterial(
                 name=name, description=description,
                 library_id=library_id, document_names=doc_names_str,
-                prompt_id=1, created_by=user_id, min_minutes=10,
+                prompt_id=prompt_id, created_by=user_id, min_minutes=10,
             )
             session.add(material)
             await session.commit()
 
-            ai_data = await generate_study_material(doc_contents, prompt_text)
+            try:
+                ai_data = await generate_study_material(doc_contents, prompt_text)
+            except Exception as e:
+                logger.warning("Study material AI generation failed for job %s: %s", job_id, e)
+                await session.delete(material)
+                await session.commit()
+                _jobs[job_id] = {"status": "failed", "error": "AI 调用失败，请稍后再试"}
+                return
+
             if not isinstance(ai_data, dict) or "cover" not in ai_data:
                 await session.delete(material)
                 await session.commit()
@@ -427,8 +435,8 @@ async def generate_material(
     _jobs[job_id] = {"status": "running", "material_id": None, "error": None}
     asyncio.create_task(_run_generation(
         job_id, request.name, request.description, request.library_id,
-        doc_names_str, prompt.prompt, doc_contents, lib.local_path,
-        current_user.id,
+        doc_names_str, request.prompt_id, prompt.prompt, doc_contents,
+        lib.local_path, current_user.id,
     ))
     logger.info("Job %s created, background task scheduled", job_id)
     return success_response({"job_id": job_id}, "生成任务已启动")

@@ -229,7 +229,7 @@ async function doGenerate() {
     await $api.post("/exams/generate", body);
     saved.value = true;
     showMessage("生成成功", "success");
-    setTimeout(() => { router.push("/admin/exams"); }, 500);
+    await router.push("/admin/exams");
   } catch (e) { showMessage(e.response?.data?.detail || "生成失败", "error"); } finally { generating.value = false; }
 }
 

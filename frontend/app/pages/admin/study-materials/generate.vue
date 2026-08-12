@@ -162,7 +162,7 @@ async function pollJob(jobId) {
         clearInterval(pollTimer);
         generating.value = false;
         showMessage("生成成功", "success");
-        setTimeout(() => { router.push("/admin/study-materials"); }, 500);
+        await router.push("/admin/study-materials");
       } else if (job.status === "failed") {
         clearInterval(pollTimer);
         generating.value = false;

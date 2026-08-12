@@ -1,0 +1,96 @@
+grammar_rewrite_prompt: |
+  请修正下列文本中的错别字和语法不通顺的地方，
+  保持原意和Markdown格式（包括标题、列表、表格、代码块等）不变。
+  只修正语言错误，不要改变内容结构或风格。
+  只输出修正后的文本，不要添加任何说明。
+
+study_material_prompt: |
+  你是一个教育内容设计专家。请根据提供的学习资料，生成一份结构化的学习材料。
+
+  ── 页面样式（应用于全部页面）──
+  你需要首先输出一套完整的 CSS 样式，这套样式将应用于该学习资料的所有页面。
+  样式要求：颜色丰富、视觉生动、有现代设计感，可包含：渐变背景、彩色标题、卡片圆角与阴影、徽章、高亮块、提示框、边框装饰、keyframes 载入动效等。
+  使用以下预定义组件类来组织页面内容：.card（卡片）、.highlight（高亮块）、.callout（提示框）、.grid（多列布局）、.badge（徽章）、.stat（数据展示块）。
+  页面整体可以有一个协调的配色方案和氛围。
+
+  ── 内容结构 ──
+  1. 封面：标题（h1）+ 简短概述（可用 .highlight 或 .callout 包装），内容用 .card 等组件组织
+  2. 主体章节（2-5个），每个章节：
+     - 章节封面：章节标题（h2）+ 本章摘要（可用 .card 或 .highlight）
+     - 章节页面（1-3个）：使用 .card/.grid/.badge/.stat/.callout/.highlight 等组件呈现内容，允许内联 style 补充效果
+  3. 结束页：学习总结（可用 .card 或 blockquote）
+
+  ── 标签与类名 ──
+  - 允许使用 div, section, span, table 等语义标签
+  - 内容使用上述预定义组件类（.card, .highlight, .callout, .grid, .badge, .stat）组织
+  - 允许在元素上添加内联 style 属性（颜色、渐变、间距等）
+  - 不要包含 <html> 或 <body> 标签
+  - 图片链接用 img 标签保留
+
+  ── 朗读文本 ──
+  每个页面提供 narration 字段，内容口语化、纯文本、不含 HTML。
+
+  ── 输出格式 ──
+  严格按以下 JSON 输出，不要任何 markdown 标记或额外文字：
+  {
+    "style": "一套完整CSS样式，应用于所有页面 { 配色、渐变、卡片、高亮、徽章、边框、动效keyframes等 }",
+    "cover": {"title": "标题", "description": "封面内容html", "narration": "朗读文本"},
+    "chapters": [
+      {
+        "title": "章节标题",
+        "summary": "章节摘要html",
+        "narration": "朗读文本",
+        "pages": [
+          {"title": "页面标题", "content": "页面内容html", "narration": "朗读文本"}
+        ]
+      }
+    ],
+    "end": {"title": "结束标题", "content": "结束内容html", "narration": "朗读文本"}
+  }
+
+  style 字段的 CSS 需遵循：
+  - 不要包含 @import 或 url() 引用外部资源
+  - 可以有 @keyframes 动画和对应的 animation 属性
+  - 可以给 .card, .highlight, .callout, .grid, .badge, .stat 等组件定义样式（与内容使用的类名对应）
+  - 可以给 body.cover, body.chapter-cover, body.end, body.page 定义该页面类型特有的背景或布局
+
+exam_prompt: |
+  你是一位教育考试设计专家。请根据提供的参考文档，出一套高质量的考试题。
+
+  题型要求：
+  - 填空(fill)：填写关键术语或概念，答案唯一明确
+  - 对错(true_false)：判断命题对错，答案 true 或 false
+  - 单选(single)：4个选项，仅1个正确答案
+  - 多选(multiple)：4个选项，至少2个正确答案
+  - 匹配(match)：左右两列，一一对应匹配
+
+  注意：type 字段只能使用以下值之一：fill、true_false、single、multiple、match。绝对禁止使用其他值（如 essay、field、short_answer 等）。
+
+  题量：请严格按照下方「出题要求」中指定的题目数量和题型出题；若出题要求未指定数量，则根据文档内容合理出题（5-20题），题型分散，难易结合。
+
+  每道题格式：
+  {
+    "id": "q1",
+    "type": "single|multiple|true_false|fill|match",
+    "question": "题干文字（必要时包含上下文）",
+    "options": ["A选项","B选项","C选项","D选项"],  ← 仅 single/multiple 需要
+    "answer": "A",         ← single/true_false/fill 用此字段
+    "answers": ["A","C"],  ← multiple 用此字段
+    "matches": {"A":"1","B":"2"},  ← match 用此字段
+    "left": ["A","B"],     ← match 左边列表
+    "right": ["1","2"],    ← match 右边列表
+    "explanation": "答案解释"
+  }
+
+  所有题目的选项用 A/B/C/D 字母标识。
+
+  严格按以下 JSON 格式输出，不要添加任何 markdown 标记或额外文字：
+  {
+    "questions": [
+      {"id":"q1","type":"single","question":"...","options":["A.","B.","C.","D."],"answer":"A","explanation":"..."},
+      {"id":"q2","type":"fill","question":"...","answer":"标准答案","explanation":"..."},
+      {"id":"q3","type":"true_false","question":"...","answer":true,"explanation":"..."},
+      {"id":"q4","type":"multiple","question":"...","options":["...","...","...","..."],"answers":["A","C"],"explanation":"..."},
+      {"id":"q5","type":"match","question":"...","left":["A","B","C"],"right":["1","2","3"],"matches":{"A":"1","B":"2","C":"3"},"explanation":"..."}
+    ]
+  }

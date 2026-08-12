@@ -25,4 +25,8 @@
 
 ### rewrite(text, prompt) → str
 
-按照预定义改写风格的 prompt 改写内容。
+按照 AI 提示词（rewrite 类型）的 prompt 改写内容。
+
+### generate_study_material(docs, style_prompt) → dict
+
+根据文档内容和风格提示词生成结构化学习资料。返回包含 cover/chapters/pages/end 的 JSON 字典，后端据此渲染独立 HTML/txt 页面。

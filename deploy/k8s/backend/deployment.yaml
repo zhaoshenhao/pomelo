@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pomelo-backend
+  namespace: <NAMESPACE>
+  labels:
+    app: pomelo-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pomelo-backend
+  template:
+    metadata:
+      labels:
+        app: pomelo-backend
+    spec:
+      imagePullSecrets:
+        - name: regsecret
+      containers:
+        - name: pomelo-backend
+          image: registry.cn-shanghai.aliyuncs.com/ybbmb/pomelo-backend:<TAG>
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: pomelo-secrets
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: storage
+              mountPath: /app/data/storage
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: pomelo-storage

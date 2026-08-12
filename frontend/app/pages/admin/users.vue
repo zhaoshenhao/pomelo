@@ -2,8 +2,8 @@
   <div>
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <h2 class="text-xl font-bold text-gray-900">用户管理</h2>
-        <p class="text-sm text-gray-500 mt-1">管理系统中的所有用户</p>
+        <h2 class="text-xl font-bold text-gray-900">{{ pageTitle }}</h2>
+        <p class="text-sm text-gray-500 mt-1">{{ isTeacher ? '管理所有学员' : '管理系统中的所有用户' }}</p>
       </div>
       <button @click="openCreateModal" class="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition shadow-sm">+ 新增用户</button>
     </div>
@@ -16,7 +16,7 @@
           placeholder="搜索姓名 / 用户名 / 邮箱..."
           class="flex-1 min-w-[200px] px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
         />
-        <select v-model="roleFilter" @change="fetchUsers" class="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white">
+        <select v-if="!isTeacher" v-model="roleFilter" @change="fetchUsers" class="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white">
           <option value="">全部角色</option>
           <option value="admin">管理员</option>
           <option value="teacher">教师</option>
@@ -53,6 +53,7 @@
               <th @click="toggleSort('role')" class="px-4 py-3 font-medium cursor-pointer hover:text-gray-900 select-none">
                 角色 {{ sortIcon('role') }}
               </th>
+              <th class="px-4 py-3 font-medium">标签</th>
               <th @click="toggleSort('is_active')" class="px-4 py-3 font-medium cursor-pointer hover:text-gray-900 select-none">
                 状态 {{ sortIcon('is_active') }}
               </th>
@@ -68,6 +69,7 @@
               <td class="px-4 py-3 text-gray-500">{{ user.department_name || '-' }}</td>
               <td class="px-4 py-3">
                 <select
+                  v-if="!isTeacher"
                   :value="user.role"
                   @change="handleRoleChange(user, $event)"
                   :disabled="user.id === authStore.user?.id"
@@ -77,6 +79,13 @@
                   <option value="teacher">教师</option>
                   <option value="student">学员</option>
                 </select>
+                <span v-else class="text-xs text-gray-600">学员</span>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="t in user.tags" :key="t" class="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded-full">{{ t }}</span>
+                  <span v-if="!user.tags?.length" class="text-gray-400">-</span>
+                </div>
               </td>
               <td class="px-4 py-3">
                 <button
@@ -131,7 +140,7 @@
               <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
             </select>
           </div>
-          <div>
+          <div v-if="!isTeacher">
             <label class="block text-sm font-medium text-gray-700 mb-1">角色</label>
             <select v-model="editForm.role" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white">
               <option value="student">学员</option>
@@ -142,6 +151,20 @@
           <div class="flex items-center gap-2">
             <label class="text-sm font-medium text-gray-700">激活</label>
             <input type="checkbox" v-model="editForm.is_active" class="rounded" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">标签</label>
+            <div class="max-h-40 overflow-y-auto space-y-1 border border-gray-100 rounded-lg p-2">
+              <label v-for="t in allTags" :key="t.id" class="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-1 py-0.5 rounded">
+                <input type="checkbox" :checked="editTagIds.includes(t.id)" @change="toggleTag(t.id)" class="rounded" />
+                {{ t.name }}
+              </label>
+              <div v-if="allTags.length === 0" class="text-xs text-gray-400">暂无标签</div>
+            </div>
+            <div class="flex gap-1 mt-1">
+              <input v-model="editNewTagName" placeholder="新建标签名称" class="flex-1 px-2 py-1 text-xs border border-gray-200 rounded-lg" @keyup.enter="handleCreateTag" />
+              <button type="button" @click="handleCreateTag" class="px-3 py-1 bg-primary-600 text-white text-xs rounded-lg hover:bg-primary-700">新建</button>
+            </div>
           </div>
           <div class="flex gap-2 pt-2">
             <button type="submit" class="flex-1 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700">保存</button>
@@ -184,7 +207,7 @@
               <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
             </select>
           </div>
-          <div>
+          <div v-if="!isTeacher">
             <label class="block text-sm font-medium text-gray-700 mb-1">角色</label>
             <select v-model="createForm.role" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white">
               <option value="student">学员</option>
@@ -228,6 +251,7 @@ const { $api } = useNuxtApp();
 
 const users = ref([]);
 const departments = ref([]);
+const allTags = ref([]);
 const total = ref(0);
 const deleteModalOpen = ref(false);
 const deletingUser = ref(null);
@@ -248,10 +272,14 @@ const createConfirmClose = ref(false);
 const editingUser = ref(null);
 const editForm = ref({});
 const editFormSnapshot = ref({});
+const editTagIds = ref([]);
+const editNewTagName = ref("");
 const createForm = ref({ username: "", display_name: "", email: "", phone: "", department_id: null, role: "student", password: "" });
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize) || 1);
 const msgClass = computed(() => msgType.value === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200");
+const isTeacher = computed(() => authStore.user?.role === "teacher");
+const pageTitle = computed(() => isTeacher.value ? "学员管理" : "人员管理");
 
 const isEditDirty = computed(() => {
   const f = editForm.value;
@@ -262,7 +290,9 @@ const isEditDirty = computed(() => {
     || f.phone !== (s.phone || "")
     || (f.department_id || null) !== (s.department_id || null)
     || f.role !== s.role
-    || f.is_active !== s.is_active;
+    || f.is_active !== s.is_active
+    || editTagIds.value.sort().join(",") !== (s.tagIds || []).sort().join(",")
+    || editNewTagName.value !== (s.newTagName || "");
 });
 
 const isCreateDirty = computed(() => {
@@ -317,6 +347,13 @@ async function fetchDepartments() {
   } catch {}
 }
 
+async function fetchAllTags() {
+  try {
+    const res = await $api.get("/tags");
+    allTags.value = res.data.data;
+  } catch {}
+}
+
 async function handleRoleChange(user, event) {
   const newRole = event.target.value;
   try {
@@ -352,6 +389,11 @@ function openEditModal(user) {
     is_active: user.is_active,
     new_password: "",
   };
+  editNewTagName.value = "";
+  editConfirmClose.value = false;
+  editModalOpen.value = true;
+  editTagIds.value = [];
+  $api.get(`/users/${user.id}/tags`).then(r => { editTagIds.value = (r.data.data || []).map(t => t.id); }).catch(() => {});
   editFormSnapshot.value = {
     display_name: user.display_name || "",
     username: user.username,
@@ -360,9 +402,9 @@ function openEditModal(user) {
     department_id: user.department_id || null,
     role: user.role,
     is_active: user.is_active,
+    tagIds: [],
+    newTagName: "",
   };
-  editConfirmClose.value = false;
-  editModalOpen.value = true;
 }
 
 function closeEditModal() {
@@ -391,6 +433,7 @@ async function handleEditSubmit() {
     };
     const res = await $api.patch(`/users/${editingUser.value.id}`, body);
     Object.assign(editingUser.value, res.data.data);
+    await $api.put(`/users/${editingUser.value.id}/tags`, { tag_ids: editTagIds.value });
     editModalOpen.value = false;
     showMessage("保存成功", "success");
   } catch (e) {
@@ -406,6 +449,25 @@ async function handleResetPassword() {
     editForm.value.new_password = "";
   } catch (e) {
     showMessage(e.response?.data?.detail || "重置失败", "error");
+  }
+}
+
+function toggleTag(tagId) {
+  const idx = editTagIds.value.indexOf(tagId);
+  if (idx >= 0) editTagIds.value.splice(idx, 1);
+  else editTagIds.value.push(tagId);
+}
+
+async function handleCreateTag() {
+  if (!editNewTagName.value) return;
+  try {
+    const r = await $api.post("/tags", { name: editNewTagName.value });
+    allTags.value.push(r.data.data);
+    editTagIds.value.push(r.data.data.id);
+    editNewTagName.value = "";
+    showMessage("标签已创建", "success");
+  } catch (e) {
+    showMessage(e.response?.data?.detail || "创建标签失败", "error");
   }
 }
 
@@ -468,5 +530,6 @@ function showMessage(msg, type) {
 }
 
 fetchDepartments();
+fetchAllTags();
 fetchUsers();
 </script>

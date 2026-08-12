@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserRegisterRequest(BaseModel):
@@ -42,6 +42,7 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    tags: list[str] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 

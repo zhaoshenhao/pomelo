@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pomelo-ingress
+  namespace: <NAMESPACE>
+  annotations:
+    konghq.com/strip-path: "false"
+    konghq.com/preserve-host: "false"
+spec:
+  ingressClassName: kong-ext
+  tls:
+  - hosts:
+    - <DOMAIN>
+    secretName: cert-manager-pomelo-dev
+  rules:
+    - host: <DOMAIN>
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: pomelo-backend
+                port:
+                  number: 8080
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: pomelo-backend
+                port:
+                  number: 8080
+          - path: /ready
+            pathType: Exact
+            backend:
+              service:
+                name: pomelo-backend
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pomelo-oss-webui
+                port:
+                  number: 443

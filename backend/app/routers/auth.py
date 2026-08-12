@@ -46,6 +46,7 @@ def _user_to_response(user: User) -> UserResponse:
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at,
+        tags=[t.name for t in user.tags],
     )
 
 
@@ -61,6 +62,9 @@ async def _create_session_for_user(user_id: int) -> str:
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(request: UserRegisterRequest, session: AsyncSession = Depends(get_session)):
+    from app.config import settings
+    if not settings.REGISTRATION_ENABLED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="注册功能已关闭，请联系管理员")
     existing = await session.execute(
         select(User).where((User.username == request.username) | (User.email == request.email))
     )
@@ -82,7 +86,7 @@ async def register(request: UserRegisterRequest, session: AsyncSession = Depends
     session.add(user)
     await session.commit()
     await session.refresh(user)
-    return success_response(UserResponse.model_validate(user), "注册成功")
+    return success_response(_user_to_response(user), "注册成功")
 
 
 @router.post("/login")
@@ -181,7 +185,7 @@ async def logout(
 
 @router.get("/me")
 async def get_me(user: User = Depends(get_current_user)):
-    return success_response(UserResponse.model_validate(user))
+    return success_response(_user_to_response(user))
 
 
 @router.patch("/profile")

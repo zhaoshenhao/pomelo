@@ -8,7 +8,23 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
   },
+  runtimeConfig: {
+    public: {
+      apiBase: "",
+      examDebug: "true",
+      examEstSingle: 60,
+      examEstMultiple: 80,
+      examEstTrueFalse: 45,
+      examEstFill: 80,
+      examEstMatch: 120,
+    },
+  },
   devServer: {
     port: 3000,
+  },
+  app: {
+    head: {
+      script: [{ src: "/config.js" }],
+    },
   },
 })

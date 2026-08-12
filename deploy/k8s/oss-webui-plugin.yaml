@@ -1,0 +1,11 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: pomelo-oss-webui-response-headers
+  namespace: <NAMESPACE>
+plugin: response-transformer
+config:
+  remove:
+    headers:
+    - Content-Disposition
+    - x-oss-force-download

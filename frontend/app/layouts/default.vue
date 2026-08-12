@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex">
+  <div class="h-screen bg-gray-50 flex">
     <aside
       class="w-64 bg-gradient-to-b from-primary-900 to-primary-950 text-white flex flex-col shrink-0"
       :class="{ 'hidden md:flex': !mobileOpen, 'fixed inset-y-0 left-0 z-50 flex': mobileOpen }"
@@ -55,7 +55,7 @@
         </div>
       </header>
 
-      <main class="flex-1 p-4 sm:p-6">
+      <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
         <slot />
       </main>
     </div>
@@ -74,23 +74,36 @@ const mobileOpen = ref(false);
 const roleMenuItems = {
   admin: [
     { path: "/", icon: "\u{1F4CA}", label: "工作台" },
-    { path: "/admin/users", icon: "\u{1F465}", label: "用户管理" },
+    { path: "/admin/users", icon: "\u{1F465}", label: "人员管理" },
+    { path: "/admin/student-tags", icon: "\u{1F3F7}", label: "学员标签" },
     { path: "/admin/departments", icon: "\u{1F3E2}", label: "部门管理" },
     { path: "/admin/libraries", icon: "\u{1F4DA}", label: "文档库管理" },
     { path: "/admin/approvals", icon: "\u{1F4DD}", label: "文档审批" },
-    { path: "/admin/styles", icon: "\u{1F3A8}", label: "改写风格", separator: true },
+    { path: "/admin/ai-prompts", icon: "\u{1F3A8}", label: "AI提示词" },
+    { path: "/admin/question-banks", icon: "\u{1F4DA}", label: "题库管理" },
+    { path: "/admin/study-materials", icon: "\u{1F4D6}", label: "学习资料", separator: true },
+    { path: "/admin/videos", icon: "\u{1F3AC}", label: "视频资料" },
+    { path: "/admin/exams", icon: "\u{1F4DD}", label: "试卷管理" },
     { path: "/profile", icon: "\u{2699}\u{FE0F}", label: "个人设置", separator: true },
   ],
   teacher: [
     { path: "/", icon: "\u{1F4CA}", label: "工作台" },
     { path: "/admin/libraries", icon: "\u{1F4DA}", label: "文档库管理" },
-    { path: "/admin/approvals", icon: "\u{1F4DD}", label: "文档审批", separator: true },
+    { path: "/admin/approvals", icon: "\u{1F4DD}", label: "文档审批" },
+    { path: "/admin/users", icon: "\u{1F393}", label: "学员管理" },
+    { path: "/admin/student-tags", icon: "\u{1F3F7}", label: "学员标签" },
+    { path: "/admin/question-banks", icon: "\u{1F4DA}", label: "题库管理" },
+    { path: "/admin/study-materials", icon: "\u{1F4D6}", label: "学习资料", separator: true },
+    { path: "/admin/videos", icon: "\u{1F3AC}", label: "视频资料" },
+    { path: "/admin/exams", icon: "\u{1F4DD}", label: "试卷管理" },
     { path: "/profile", icon: "\u{2699}\u{FE0F}", label: "个人设置", separator: true },
   ],
   student: [
     { path: "/", icon: "\u{1F4CA}", label: "工作台" },
-    { path: "/courses", icon: "\u{1F4D6}", label: "我的课程" },
-    { path: "/certificates", icon: "\u{1F3C6}", label: "我的证书" },
+    { path: "/student/courses", icon: "\u{1F4D6}", label: "我的课程" },
+    { path: "/student/videos", icon: "\u{1F3AC}", label: "我的学习视频" },
+    { path: "/student/training", icon: "\u{1F3AF}", label: "模拟训练" },
+    { path: "/student/exams", icon: "\u{1F4DD}", label: "我的考试" },
     { path: "/profile", icon: "\u{2699}\u{FE0F}", label: "个人设置", separator: true },
   ],
 };

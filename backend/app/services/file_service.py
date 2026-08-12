@@ -234,3 +234,234 @@ def restore_backup(library_directory: str, directory_name: str, backup_filename:
                 shutil.copyfileobj(src, dst)
     logger.info("Restored backup %s to library %s", backup_filename, directory_name)
     return lib_path
+
+
+def get_material_root() -> str:
+    path = os.path.join(get_docs_root(), "material")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def get_material_library_dir(library_dir: str) -> str:
+    path = os.path.join(get_material_root(), sanitize_directory_name(library_dir))
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def get_material_dir(library_dir: str, material_id: int) -> str:
+    path = os.path.join(get_material_library_dir(library_dir), str(material_id))
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def delete_material_dir(library_dir: str, material_id: int) -> None:
+    dir_path = os.path.join(get_material_library_dir(library_dir), str(material_id))
+    if os.path.isdir(dir_path):
+        shutil.rmtree(dir_path)
+
+
+def save_material_file(library_dir: str, material_id: int, filename: str, content: str) -> str:
+    dir_path = get_material_dir(library_dir, material_id)
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+    return filepath
+
+
+def read_material_file(library_dir: str, material_id: int, filename: str) -> str:
+    dir_path = os.path.join(get_material_library_dir(library_dir), str(material_id))
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    if not filepath.startswith(dir_path):
+        raise ValueError("Invalid filename")
+    with open(filepath, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def save_material_binary(library_dir: str, material_id: int, filename: str, data: bytes) -> str:
+    dir_path = os.path.join(get_material_library_dir(library_dir), str(material_id))
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    with open(filepath, "wb") as f:
+        f.write(data)
+    return filepath
+
+
+def get_material_file_path(library_dir: str, material_id: int, filename: str) -> str:
+    dir_path = os.path.join(get_material_library_dir(library_dir), str(material_id))
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    if not filepath.startswith(dir_path):
+        raise ValueError("Invalid filename")
+    return filepath
+
+
+def get_exam_root() -> str:
+    path = os.path.join(get_docs_root(), "exam")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def get_exam_dir(exam_id: int) -> str:
+    path = os.path.join(get_exam_root(), str(exam_id))
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def save_exam_file(exam_id: int, filename: str, content: str) -> str:
+    dir_path = get_exam_dir(exam_id)
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+    return filepath
+
+
+def read_exam_file(exam_id: int, filename: str) -> str:
+    dir_path = get_exam_dir(exam_id)
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    if not filepath.startswith(dir_path):
+        raise ValueError("Invalid filename")
+    with open(filepath, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def get_exam_file_path(exam_id: int, filename: str) -> str:
+    dir_path = get_exam_dir(exam_id)
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    if not filepath.startswith(dir_path):
+        raise ValueError("Invalid filename")
+    return filepath
+
+
+def delete_exam_dir(exam_id: int) -> None:
+    dir_path = get_exam_dir(exam_id)
+    if os.path.isdir(dir_path):
+        shutil.rmtree(dir_path)
+
+
+def get_qb_root() -> str:
+    path = os.path.join(get_docs_root(), "qb")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def get_qb_dir(qb_id: int) -> str:
+    path = os.path.join(get_qb_root(), str(qb_id))
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def save_qb_file(qb_id: int, filename: str, content: str) -> str:
+    dir_path = get_qb_dir(qb_id)
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+    return filepath
+
+
+def read_qb_file(qb_id: int, filename: str) -> str:
+    dir_path = get_qb_dir(qb_id)
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    if not filepath.startswith(dir_path):
+        raise ValueError("Invalid filename")
+    with open(filepath, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def delete_qb_dir(qb_id: int) -> None:
+    dir_path = get_qb_dir(qb_id)
+    if os.path.isdir(dir_path):
+        shutil.rmtree(dir_path)
+
+
+def get_exam_batch_dir(exam_id: int, batch_id: int) -> str:
+    path = os.path.join(get_exam_dir(exam_id), "batch", str(batch_id))
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def save_exam_batch_file(exam_id: int, batch_id: int, filename: str, content: str) -> str:
+    dir_path = get_exam_batch_dir(exam_id, batch_id)
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+    return filepath
+
+
+def read_exam_batch_file(exam_id: int, batch_id: int, filename: str) -> str:
+    dir_path = get_exam_batch_dir(exam_id, batch_id)
+    safe = sanitize_filename(filename)
+    filepath = os.path.join(dir_path, safe)
+    if not filepath.startswith(dir_path):
+        raise ValueError("Invalid filename")
+    with open(filepath, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def get_drill_root() -> str:
+    path = os.path.join(get_qb_root(), "drills")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def get_drill_file(student_id: int) -> str:
+    path = os.path.join(get_drill_root(), f"{student_id}.json")
+    return path
+
+
+def read_drill_data(student_id: int) -> dict:
+    filepath = get_drill_file(student_id)
+    if not os.path.isfile(filepath):
+        return {}
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_drill_data(student_id: int, data: dict) -> None:
+    filepath = get_drill_file(student_id)
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+
+
+def list_drill_files() -> list[str]:
+    root = get_drill_root()
+    if not os.path.isdir(root):
+        return []
+    return [os.path.join(root, f) for f in os.listdir(root) if f.endswith(".json")]
+
+
+def get_drill_summary_root() -> str:
+    path = os.path.join(get_drill_root(), "summary")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def get_drill_summary_file(qb_id: int) -> str:
+    return os.path.join(get_drill_summary_root(), f"{qb_id}.json")
+
+
+def read_drill_summary(qb_id: int) -> dict | None:
+    filepath = get_drill_summary_file(qb_id)
+    if not os.path.isfile(filepath):
+        return None
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def save_drill_summary(qb_id: int, data: dict) -> None:
+    filepath = get_drill_summary_file(qb_id)
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2, default=str)

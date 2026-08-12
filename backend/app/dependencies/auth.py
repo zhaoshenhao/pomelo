@@ -103,3 +103,9 @@ def require_teacher_or_admin(user: User = Depends(get_current_user)) -> User:
     if user.role not in (UserRole.TEACHER, UserRole.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要教师或管理员权限")
     return user
+
+
+def require_student(user: User = Depends(get_current_user)) -> User:
+    if user.role == UserRole.STUDENT:
+        return user
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要学员身份")

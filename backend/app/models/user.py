@@ -9,6 +9,7 @@ from app.models import Base
 
 if TYPE_CHECKING:
     from app.models.department import Department
+    from app.models.student_tag import StudentTag
 
 
 class UserRole(str, enum.Enum):
@@ -28,6 +29,8 @@ class User(Base):
     department_id: Mapped[int] = mapped_column(Integer, ForeignKey("departments.id"), nullable=True)
 
     department: Mapped["Department | None"] = relationship("Department", lazy="selectin")
+
+    tags: Mapped[list["StudentTag"]] = relationship("StudentTag", secondary="student_tag_links", back_populates="users", lazy="selectin")
 
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False, default=UserRole.STUDENT)

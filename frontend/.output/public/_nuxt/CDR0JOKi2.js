@@ -1,0 +1,1 @@
+import{E as e,Tt as t,Z as n}from"./DCnjqvPi.js";import{f as r}from"./DauIinfa.js";import{t as i}from"./CNs_Ozdc.js";import{t as a}from"./DLxc73rR2.js";var o={__name:`[id]`,setup(o){i({layout:!1});let s=r();return(r,i)=>{let o=a;return n(),e(o,{"video-id":Number(t(s).params.id),"record-stats":!1},null,8,[`video-id`])}}};export{o as default};

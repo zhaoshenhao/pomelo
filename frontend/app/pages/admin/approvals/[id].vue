@@ -277,7 +277,7 @@ async function fetchDetail() {
 
 async function fetchRewriteStyles() {
   try {
-    const res = await $api.get("/rewrite-styles");
+    const res = await $api.get("/ai-prompts", { params: { type: "rewrite" } });
     rewriteStyles.value = res.data.data;
   } catch {}
 }

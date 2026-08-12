@@ -13,33 +13,46 @@ from app.models import Base
 from app.main import app
 from app.services import redis_store
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-
-
-@event.listens_for(test_engine.sync_engine, "connect")
-def _set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
-
-
-test_async_session = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+# Mutable module globals, set per-test by setup_database.
+test_engine = None
+test_async_session = None
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def setup_database():
+async def setup_database(tmp_path):
     settings.REDIS_HOST = "127.0.0.1"
     settings.REDIS_PORT = 19999
     settings.REDIS_PASSWORD = ""
+    settings.TTS_DEFAULT_VOICE = ""
     redis_store._redis_available = None
     redis_store._redis_client = None
-    async with test_engine.begin() as conn:
+
+    db_path = tmp_path / "pomelo_test.db"
+    engine = create_async_engine(f"sqlite+aiosqlite:///{db_path.as_posix()}", echo=False)
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    from app import database as _db
+    _orig_session = _db.async_session
+    _db.async_session = session_factory
+
+    global test_engine, test_async_session
+    test_engine = engine
+    test_async_session = session_factory
+
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
-    async with test_engine.begin() as conn:
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
+    _db.async_session = _orig_session
 
 
 @pytest_asyncio.fixture(autouse=True)

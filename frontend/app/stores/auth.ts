@@ -18,6 +18,8 @@ interface AuthState {
   refreshToken: string | null;
 }
 
+let initPromise: Promise<void> | null = null;
+
 export const useAuthStore = defineStore("auth", {
   state: (): AuthState => ({
     user: null,
@@ -65,6 +67,7 @@ export const useAuthStore = defineStore("auth", {
       this.user = null;
       this.accessToken = null;
       this.refreshToken = null;
+      initPromise = null;
       if (process.client) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
@@ -73,6 +76,13 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async init() {
+      if (!initPromise) {
+        initPromise = this._doInit();
+      }
+      return initPromise;
+    },
+
+    async _doInit() {
       if (process.client) {
         const token = localStorage.getItem("access_token");
         if (token) {
@@ -80,8 +90,10 @@ export const useAuthStore = defineStore("auth", {
           this.refreshToken = localStorage.getItem("refresh_token");
           try {
             await this.fetchUser();
-          } catch {
-            this.logout();
+          } catch (e) {
+            if (e?.response?.status === 401) {
+              this.logout();
+            }
           }
         }
       }

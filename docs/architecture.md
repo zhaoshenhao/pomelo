@@ -36,7 +36,8 @@ dependencies/    ← 认证、授权依赖注入
 ### 数据模型关系
 
 ```
-User ─────┐                     RewriteStyle (改写风格)
+User ─────┐                     AIPrompt (AI提示词)
+           │                     StudyMaterial (学习资料)
           │
           │ uploads
           ▼

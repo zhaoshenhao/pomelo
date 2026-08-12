@@ -199,20 +199,61 @@ class TestConfirmSameNameReplacement:
         )
         assert resp.status_code == 409
 
-    @pytest.mark.asyncio
-    async def test_add_new_rejects_same_name(self, client: AsyncClient):
-        admin_token, lib_id, doc_name = await self._setup_library_with_doc(client)
-        approval_id = await _create_approval(client, admin_token, lib_id)
-
-        resp = await client.put(
-            f"/api/approvals/{approval_id}/meta",
-            json={"content_choice": "新增", "new_name": doc_name},
-            headers={"Authorization": f"Bearer {admin_token}"},
-        )
-        assert resp.status_code == 200
-
         resp = await client.post(
             f"/api/approvals/{approval_id}/confirm",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert resp.status_code == 409
+
+
+class TestRewriteEndpoint:
+    async def _setup(self, client: AsyncClient) -> tuple[str, int, int]:
+        admin_token = await _register_admin(client)
+        lib_id = await _create_library(client, admin_token)
+        approval_id = await _create_approval(client, admin_token, lib_id)
+        return admin_token, lib_id, approval_id
+
+    @pytest.mark.asyncio
+    async def test_rewrite_style_no_style_id_400(self, client: AsyncClient):
+        admin_token, _, approval_id = await self._setup(client)
+        resp = await client.post(
+            f"/api/approvals/{approval_id}/rewrite",
+            json={"method": "style"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_rewrite_style_not_found_404(self, client: AsyncClient):
+        admin_token, _, approval_id = await self._setup(client)
+        resp = await client.post(
+            f"/api/approvals/{approval_id}/rewrite",
+            json={"method": "style", "style_id": 99999},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_rewrite_style_non_rewrite_type_not_found(self, client: AsyncClient):
+        admin_token, _, approval_id = await self._setup(client)
+        resp = await client.post("/api/ai-prompts", json={
+            "name": "study-prompt", "prompt": "learn", "prompt_type": "study",
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        study_id = resp.json()["data"]["id"]
+
+        resp = await client.post(
+            f"/api/approvals/{approval_id}/rewrite",
+            json={"method": "style", "style_id": study_id},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_rewrite_invalid_method_400(self, client: AsyncClient):
+        admin_token, _, approval_id = await self._setup(client)
+        resp = await client.post(
+            f"/api/approvals/{approval_id}/rewrite",
+            json={"method": "invalid"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 400

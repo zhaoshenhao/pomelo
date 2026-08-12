@@ -1,0 +1,1 @@
+import{h as e}from"./DCnjqvPi.js";import{c as t,u as n}from"./DauIinfa.js";import{t as r}from"./8fxzAZTv.js";var i=t(async()=>{let t,i,a=r();if([t,i]=e(()=>a.init()),await t,i(),!a.isAuthenticated)return n(`/login`);if(!a.isTeacherOrAdmin)return n(`/`)},1);export{i as default};

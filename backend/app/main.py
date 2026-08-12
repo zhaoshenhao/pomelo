@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.error_handler import global_exception_handler
-from app.routers import approvals, auth, departments, libraries, rewrite_styles, users
+from app.routers import ai_prompts, approvals, auth, dashboard, departments, drills, exams, libraries, question_banks, study_assignments, study_materials, tags, users, videos
 
 
 def _configure_logging() -> None:
@@ -120,7 +120,15 @@ app.include_router(users.router, prefix="/api")
 app.include_router(libraries.router, prefix="/api")
 app.include_router(departments.router, prefix="/api")
 app.include_router(approvals.router, prefix="/api")
-app.include_router(rewrite_styles.router, prefix="/api")
+app.include_router(ai_prompts.router, prefix="/api")
+app.include_router(study_materials.router, prefix="/api")
+app.include_router(exams.router, prefix="/api")
+app.include_router(study_assignments.router, prefix="/api")
+app.include_router(tags.router, prefix="/api")
+app.include_router(question_banks.router, prefix="/api")
+app.include_router(drills.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")
+app.include_router(videos.router, prefix="/api")
 
 
 @app.get("/health")

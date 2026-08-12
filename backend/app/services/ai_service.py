@@ -5,6 +5,7 @@ import httpx
 from openai import AsyncOpenAI
 
 from app.config import settings
+from app.prompts_config import get_prompts
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,8 @@ async def content_diff(new_text: str, library_texts: dict[str, str]) -> dict:
 
 async def grammar_rewrite(text: str) -> str:
     client = get_ai_client()
-    prompt = settings.GRAMMAR_REWRITE_PROMPT + "\n\n" + text
+    prompts = get_prompts()
+    prompt = prompts["grammar_rewrite_prompt"] + "\n\n" + text
 
     try:
         response = await client.chat.completions.create(
@@ -111,3 +113,139 @@ async def style_rewrite(text: str, style_prompt: str) -> str:
     except Exception as e:
         logger.error("style_rewrite failed: %s", str(e))
         raise
+
+
+def _strip_json_fence(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        if len(lines) >= 2:
+            lines = lines[1:]
+            if lines[-1].strip() == "```":
+                lines = lines[:-1]
+        if lines and lines[0].strip() == "json":
+            lines = lines[1:]
+        text = "\n".join(lines)
+    return text
+
+
+async def generate_study_material(docs: dict[str, str], style_prompt: str) -> dict:
+    client = get_ai_client()
+
+    doc_texts = ""
+    doc_max = settings.AI_DOC_MAX_CHARS
+    total_max = settings.AI_TOTAL_MAX_CHARS
+    for filename, content in docs.items():
+        doc_texts += f"\n--- 文档: {filename} ---\n{content[:doc_max]}\n"
+    total_len = len(doc_texts)
+    if total_len > total_max:
+        doc_texts = doc_texts[:total_max]
+
+    prompts = get_prompts()
+    prompt = (
+        prompts["study_material_prompt"]
+        + "\n\n"
+        + f"以下为选定的风格要求：\n{style_prompt}\n\n"
+        + "以下为学习资料的参考文档：\n"
+        + doc_texts
+    )
+
+    try:
+        response = await client.chat.completions.create(
+            model=settings.DEEPSEEK_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=settings.AI_TEMPERATURE,
+            max_tokens=settings.AI_MAX_TOKENS,
+        )
+        raw = response.choices[0].message.content or "{}"
+        parsed = json.loads(_strip_json_fence(raw))
+        return parsed
+    except Exception as e:
+        logger.error("generate_study_material failed: %s", str(e))
+        raise
+
+
+async def generate_exam(docs: dict[str, str], style_prompt: str) -> dict:
+    client = get_ai_client()
+
+    doc_texts = ""
+    doc_max = settings.AI_DOC_MAX_CHARS
+    total_max = settings.AI_TOTAL_MAX_CHARS
+    for filename, content in docs.items():
+        doc_texts += f"\n--- 文档: {filename} ---\n{content[:doc_max]}\n"
+    total_len = len(doc_texts)
+    if total_len > total_max:
+        doc_texts = doc_texts[:total_max]
+
+    prompts = get_prompts()
+    prompt = (
+        prompts["exam_prompt"]
+        + "\n\n"
+        + f"以下为选定的出题要求：\n{style_prompt}\n\n"
+        + "以下为参考文档：\n"
+        + doc_texts
+    )
+
+    try:
+        response = await client.chat.completions.create(
+            model=settings.DEEPSEEK_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=settings.AI_QB_MAX_TOKENS,
+        )
+        raw = response.choices[0].message.content or "{}"
+        parsed = json.loads(_strip_json_fence(raw))
+        return parsed
+    except Exception as e:
+        logger.error("generate_exam failed: %s", str(e))
+        raise
+
+
+async def evaluate_exam(questions: list[dict], correct_answers: dict, student_answers: list[dict]) -> str:
+    client = get_ai_client()
+    summary_lines = []
+    for a in student_answers:
+        qid = a.get("question_id", "")
+        answered = str(a.get("answer", ""))
+        expected = str(correct_answers.get(qid, ""))
+        summary_lines.append(f"- Q{qid}: 学员答={answered}, 正确答案={expected}")
+    prompt = (
+        "你是一位教学分析师。请基于学员的答题情况给出简短的评价和学习建议。\n\n"
+        + "\n".join(summary_lines)
+        + "\n\n请用2-3句话给出评价和建议（中文）。"
+    )
+    try:
+        response = await client.chat.completions.create(
+            model=settings.DEEPSEEK_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=512,
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception as e:
+        logger.error("evaluate_exam failed: %s", str(e))
+        return ""
+
+
+async def summarize_exam(student_results: list[dict]) -> str:
+    client = get_ai_client()
+    summary = "\n".join([
+        f"- 学员{r.get('student_id','?')}: 得分{r.get('score',0)}/{r.get('total',0)}, {'通过' if r.get('passed') else '未通过'}"
+        for r in student_results[:20]
+    ])
+    prompt = (
+        "你是一位教学分析师。请根据以下学员考试成绩，分析文档知识的整体覆盖情况和薄弱环节。\n\n"
+        + summary
+        + "\n\n请用3-5句话总结知识覆盖情况和改进建议（中文）。"
+    )
+    try:
+        response = await client.chat.completions.create(
+            model=settings.DEEPSEEK_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=512,
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception as e:
+        logger.error("summarize_exam failed: %s", str(e))
+        return ""

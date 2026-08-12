@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-pomelo-db
+  namespace: <NAMESPACE>
+  labels:
+    app: pomelo
+    task: db-init
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: pomelo
+        task: db-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init-mysql
+          image: mysql:8.0
+          command:
+            - sh
+            - -c
+            - |
+              echo ">>> Creating pomelo database and app user..."
+              mysql -h"${DB_HOST}" -P"${DB_PORT}" -u"${DB_ROOT_USER}" -p"${DB_ROOT_PASSWORD}" -e "
+                CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`
+                  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                DROP USER IF EXISTS '${DB_APP_USER}'@'%';
+                CREATE USER '${DB_APP_USER}'@'%' IDENTIFIED BY '${DB_APP_PASSWORD}';
+                GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_APP_USER}'@'%';
+                FLUSH PRIVILEGES;
+              "
+              echo ">>> MySQL init complete"
+          env:
+            - name: DB_HOST
+              value: "<RDS_HOST>"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_NAME
+              value: "pomelo"
+            - name: DB_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: pomelo-db-root-secret
+                  key: DB_ROOT_USER
+            - name: DB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pomelo-db-root-secret
+                  key: DB_ROOT_PASSWORD
+            - name: DB_APP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: pomelo-secrets
+                  key: DB_USER
+            - name: DB_APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pomelo-secrets
+                  key: DB_PASSWORD

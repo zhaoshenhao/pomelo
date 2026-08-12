@@ -63,14 +63,25 @@ $ports = @(8080, 3000); foreach ($p in $ports) { $conns = netstat -ano | Select-
 ```
 
 - 后端实际端口 **8080**（8000 被 Windows 占用）
-- 前端实际端口 **3000**，axios `baseURL` 直连 `http://localhost:8080/api`
+- 前端实际端口 **3000**，axios `baseURL` 通过 Nuxt `runtimeConfig.public.apiBase` 配置（默认 `http://localhost:8080/api`）
 - 前端 Nuxt 4 minimal template 的 `srcDir` 是 `app/`，所有 `pages/`、`stores/`、`plugins/`、`middleware/` 放在 `frontend/app/` 下
 - 前端 `.vue` 文件未加 `lang="ts"`，禁止写 TypeScript 类型标注（如 `catch (e: any)`）
 
 ### 数据模型
-- `User` (admin/teacher/student), `DocumentLibrary`, `Document`
-- `ApprovalProcess`, `ApprovalStep`, `BackupRecord`, `RewriteStyle`
+- - `User` (admin/teacher/student), `DocumentLibrary`, `Document`
+- `ApprovalProcess`, `ApprovalStep`, `BackupRecord`, `AIPrompt`, `StudyMaterial`, `Exam`, `ExamAssignment`
 - 所有模型在 `app/models/__init__.py` 注册，Alembic 可自动检测
+
+### 外部配置
+- 后端配置全部走 `pydantic-settings.BaseSettings`，优先级：环境变量 > `.env` 文件 > 代码默认值
+- `.env.example` 在 `backend/.env.example`，列出所有可配置字段
+- 提示词（改写/学习资料的结构默认）存储在 `backend/config/prompts.yaml`，运行时通过 `PROMPTS_FILE` env 可指向自定义路径
+- AI 参数（temperature, max_tokens, truncation 长度等）全部 env 可覆盖
+- DB 连接池大小 (`DB_POOL_SIZE`, `DB_MAX_OVERFLOW`) env 可覆盖
+- TTS 配音（`TTS_DEFAULT_VOICE`, `TTS_AVAILABLE_VOICES`, `TTS_FALLBACK_CHARS_PER_SEC`）env 可覆盖；`edge-tts` 需出站访问 `speech.platform.bing.com:443`
+- 前端 API base URL 通过 Nuxt `runtimeConfig.public.apiBase` 配置（`NUXT_PUBLIC_API_BASE` env）
+- `APP_PORT` 在 Dockerfile entrypoint 中读取，默认 8080
+- 云端部署通过 K8s Secret (`pomelo-secrets`) 注入所有配置
 
 ### 审批流程
 - 4 步: semantic_check → content_review → preview → confirm
@@ -227,6 +238,10 @@ $ports = @(8080, 3000); foreach ($p in $ports) { $conns = netstat -ano | Select-
 - ✅ **低耦合**：模块间依赖最小化
 - ❌ **禁止循环依赖**：A依赖B，B不能依赖A
 - ❌ **禁止全局状态**：避免使用全局变量或单例模式滥用
+
+### 10.2 界面设计原则
+- ✅ **编辑页面**：退出界面前需要进行脏数据检查，并确认退出；
+- ✅ **新建、修改、删除**：等必须进行二次确认
 
 ---
 

@@ -328,11 +328,13 @@ async def rewrite_content(
     elif request.method == "style":
         if request.style_id is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="自定义风格必须提供 style_id")
-        from app.models.rewrite_style import RewriteStyle
-        style_result = await session.execute(select(RewriteStyle).where(RewriteStyle.id == request.style_id))
+        from app.models.ai_prompt import AIPrompt
+        style_result = await session.execute(
+            select(AIPrompt).where(AIPrompt.id == request.style_id, AIPrompt.prompt_type == "rewrite")
+        )
         style = style_result.scalar_one_or_none()
         if style is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="改写风格不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="改写提示词不存在")
         result_content = await style_rewrite(origin_content, style.prompt)
     else:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"无效的改写方法: {request.method}")

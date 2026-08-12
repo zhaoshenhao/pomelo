@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.database import get_session
-from app.dependencies.auth import get_current_user, hash_password, require_admin
+from app.dependencies.auth import get_current_user, hash_password, require_admin, require_teacher_or_admin
 from app.models.department import Department
+from app.models.student_tag import StudentTag, student_tag_links
 from app.models.user import User, UserRole
 from app.schemas.common import success_response
+from app.schemas.tag import UserTagsUpdateRequest
 from app.schemas.user import (
     UserCreateRequest,
     UserListResponse,
@@ -21,6 +23,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 def _user_to_response(user: User, department_name: str | None = None) -> UserResponse:
+    tag_names = [t.name for t in user.tags] if hasattr(user, "tags") and user.tags else []
     return UserResponse(
         id=user.id,
         username=user.username,
@@ -33,6 +36,7 @@ def _user_to_response(user: User, department_name: str | None = None) -> UserRes
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at,
+        tags=tag_names,
     )
 
 
@@ -54,7 +58,12 @@ async def list_users(
     if current_user.role not in (UserRole.ADMIN, UserRole.TEACHER):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要教师或管理员权限")
 
-    query = select(User).options(joinedload(User.department))
+    if current_user.role == UserRole.TEACHER:
+        if role and role != "student":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="教师只能查看学员")
+        role = "student"
+
+    query = select(User).options(joinedload(User.department), selectinload(User.tags))
 
     if search:
         like = f"%{search}%"
@@ -106,7 +115,7 @@ async def get_user(
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(
-        select(User).options(joinedload(User.department)).where(User.id == user_id)
+        select(User).options(joinedload(User.department), selectinload(User.tags)).where(User.id == user_id)
     )
     user = result.unique().scalar_one_or_none()
     if user is None:
@@ -119,9 +128,15 @@ async def get_user(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_user(
     request: UserCreateRequest,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_teacher_or_admin),
     session: AsyncSession = Depends(get_session),
 ):
+    if request.role not in [r.value for r in UserRole]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的角色类型")
+
+    if current_user.role == UserRole.TEACHER and request.role != "student":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="教师只能创建学员")
+
     existing = await session.execute(
         select(User).where(
             (User.username == request.username) | (User.email == request.email)
@@ -129,9 +144,6 @@ async def create_user(
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="用户名或邮箱已存在")
-
-    if request.role not in [r.value for r in UserRole]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的角色类型")
 
     if request.department_id is not None:
         dept = await session.get(Department, request.department_id)
@@ -151,22 +163,41 @@ async def create_user(
     session.add(user)
     await session.commit()
     await session.refresh(user)
-    return success_response(UserResponse.model_validate(user), "用户创建成功")
+    return success_response(UserResponse(
+        id=user.id,
+        username=user.username,
+        display_name=user.display_name,
+        email=user.email,
+        phone=user.phone,
+        department_id=user.department_id,
+        department_name=user.department.name if user.department else None,
+        role=user.role.value if isinstance(user.role, UserRole) else user.role,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+        tags=[t.name for t in user.tags],
+    ), "用户创建成功")
 
 
 @router.patch("/{user_id}")
 async def update_user(
     user_id: int,
     request: UserUpdateRequest,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_teacher_or_admin),
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(
-        select(User).options(joinedload(User.department)).where(User.id == user_id)
+        select(User).options(joinedload(User.department), selectinload(User.tags)).where(User.id == user_id)
     )
     user = result.unique().scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    if current_user.role == UserRole.TEACHER:
+        if user.role != UserRole.STUDENT:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="教师只能管理学员")
+        if request.role is not None and request.role != "student":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="教师不能修改学员角色")
 
     if request.username is not None and request.username != user.username:
         dup = await session.execute(select(User).where(User.username == request.username))
@@ -253,13 +284,17 @@ async def update_user_role(
 async def reset_user_password(
     user_id: int,
     request: UserPasswordResetRequest,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_teacher_or_admin),
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    if current_user.role == UserRole.TEACHER and user.role != UserRole.STUDENT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="教师只能管理学员")
+
     user.hashed_password = hash_password(request.password)
     await session.commit()
     return success_response(None, "密码已重置")
@@ -268,7 +303,7 @@ async def reset_user_password(
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_teacher_or_admin),
     session: AsyncSession = Depends(get_session),
 ):
     if user_id == current_user.id:
@@ -277,8 +312,69 @@ async def delete_user(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    if current_user.role == UserRole.TEACHER and user.role != UserRole.STUDENT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="教师只能管理学员")
+
     if user.role == UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能删除管理员用户")
     await session.delete(user)
     await session.commit()
     return success_response(None, "用户已删除")
+
+
+@router.get("/{user_id}/tags")
+async def get_user_tags(
+    user_id: int,
+    current_user: User = Depends(require_teacher_or_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(User).options(selectinload(User.tags)).where(User.id == user_id)
+    )
+    user = result.unique().scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    if user.role != UserRole.STUDENT:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="只能查看学员的标签")
+
+    tags = [{"id": t.id, "name": t.name} for t in user.tags]
+    return success_response(tags)
+
+
+@router.put("/{user_id}/tags")
+async def set_user_tags(
+    user_id: int,
+    request: UserTagsUpdateRequest,
+    current_user: User = Depends(require_teacher_or_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(User).options(selectinload(User.tags)).where(User.id == user_id)
+    )
+    user = result.unique().scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    if user.role != UserRole.STUDENT:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="只能给学员打标签")
+
+    tag_ids = list(set(request.tag_ids))
+    if tag_ids:
+        tags = (await session.execute(
+            select(StudentTag).where(StudentTag.id.in_(tag_ids))
+        )).scalars().all()
+        if len(tags) != len(tag_ids):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="包含不存在的标签ID")
+
+    await session.execute(
+        delete(student_tag_links).where(student_tag_links.c.user_id == user_id)
+    )
+    for tid in tag_ids:
+        await session.execute(
+            student_tag_links.insert().values(user_id=user_id, tag_id=tid)
+        )
+    await session.commit()
+
+    return success_response(None, "标签已更新")

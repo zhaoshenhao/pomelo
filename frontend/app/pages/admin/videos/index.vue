@@ -14,7 +14,7 @@
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 text-left text-gray-600"><tr><th class="px-4 py-3 font-medium">名称</th><th class="px-4 py-3 font-medium">文档库</th><th class="px-4 py-3 font-medium">时长</th><th class="px-4 py-3 font-medium">激活</th><th class="px-4 py-3 font-medium">观看</th><th class="px-4 py-3 font-medium">创建人</th><th class="px-4 py-3 font-medium">操作</th></tr></thead>
+        <thead class="bg-gray-50 text-left text-gray-600"><tr><th class="px-4 py-3 font-medium">名称</th><th class="px-4 py-3 font-medium">文档库</th><th class="px-4 py-3 font-medium">时长</th><th class="px-4 py-3 font-medium">激活</th><th class="px-4 py-3 font-medium">观看</th><th class="px-4 py-3 font-medium">创建人</th><th class="px-4 py-3 font-medium">创建时间</th><th class="px-4 py-3 font-medium">操作</th></tr></thead>
         <tbody class="divide-y divide-gray-100">
           <tr v-for="item in items" :key="item.id" class="hover:bg-gray-50 transition">
             <td class="px-4 py-3 font-medium text-gray-900 max-w-xs truncate" :title="item.description">{{ item.name }}</td>
@@ -23,6 +23,7 @@
             <td class="px-4 py-3"><span :class="item.active ? 'text-green-600 bg-green-50 border border-green-200' : 'text-gray-400 bg-gray-50 border border-gray-200'" class="px-2 py-0.5 rounded text-xs">{{ item.active ? '启用' : '禁用' }}</span></td>
             <td class="px-4 py-3 text-gray-500 text-xs">{{ item.total_views }} 次 / {{ fmtDur(item.total_watch_seconds) }}</td>
             <td class="px-4 py-3 text-gray-500">{{ item.creator_name }}</td>
+            <td class="px-4 py-3 text-gray-400 text-xs">{{ formatDate(item.created_at) }}</td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <button @click="playVideo(item.id)" class="text-xs text-primary-600 hover:underline">播放</button>
@@ -77,6 +78,7 @@ const isEditDirty = computed(() => {
 });
 
 function fmtDur(s) { if (!s) return "0:00"; const m = Math.floor(s / 60); const r = s % 60; return `${m}:${String(r).padStart(2, "0")}`; }
+function formatDate(d) { if (!d) return "-"; return d.substring(0, 16).replace("T", " "); }
 function playVideo(id) { window.open(`/admin/videos/play/${id}`, "_blank", "width=1024,height=640"); }
 function onSearchInput() { clearTimeout(searchTimer); searchTimer = setTimeout(() => { page.value = 1; fetchList(); }, 300); }
 

@@ -2,7 +2,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
-    pass
+    __mapper_args__ = {"eager_defaults": True}
 
 
 from app.models.user import User  # noqa: F401, E402

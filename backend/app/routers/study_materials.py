@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse
@@ -115,6 +116,20 @@ def _strip_html(text: str) -> str:
     return text
 
 
+def _coerce_str(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(_coerce_str(v) for v in value)
+    return str(value)
+
+
+def _coerce_dict(value) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
 async def _resolve_names(
     session: AsyncSession,
     library_ids: set[int],
@@ -140,10 +155,11 @@ async def _resolve_names(
 def _files_for_material(data: dict) -> list[dict]:
     files = []
     seq = 0
-    if "cover" in data:
+    cover = _coerce_dict(data.get("cover"))
+    if cover:
         files.append({
             "type": "cover", "chapter": None, "page": None,
-            "title": _strip_html(data["cover"].get("title", "")),
+            "title": _strip_html(_coerce_str(cover.get("title", ""))),
             "source_key": "cover", "body_key": "description",
             "narration_key": "narration",
             "file": "cover.html", "text_file": "cover.txt",
@@ -151,9 +167,10 @@ def _files_for_material(data: dict) -> list[dict]:
         })
         seq += 1
     for ci, ch in enumerate(data.get("chapters", []), 1):
+        ch = _coerce_dict(ch)
         files.append({
             "type": "chapter_cover", "chapter": ci, "page": None,
-            "title": _strip_html(ch.get("title", f"第{ci}章")),
+            "title": _strip_html(_coerce_str(ch.get("title", f"第{ci}章"))),
             "source_key": f"chapters.{ci-1}", "body_key": "summary",
             "narration_key": "narration",
             "file": f"chapter-{ci}-cover.html", "text_file": f"chapter-{ci}-cover.txt",
@@ -161,19 +178,21 @@ def _files_for_material(data: dict) -> list[dict]:
         })
         seq += 1
         for pi, page in enumerate(ch.get("pages", []), 1):
+            page = _coerce_dict(page)
             files.append({
                 "type": "page", "chapter": ci, "page": pi,
-                "title": _strip_html(page.get("title", "")),
+                "title": _strip_html(_coerce_str(page.get("title", ""))),
                 "source_key": f"chapters.{ci-1}.pages.{pi-1}", "body_key": "content",
                 "narration_key": "narration",
                 "file": f"chapter-{ci}-page-{pi}.html", "text_file": f"chapter-{ci}-page-{pi}.txt",
                 "css_class": "page",
             })
             seq += 1
-    if "end" in data:
+    end = _coerce_dict(data.get("end"))
+    if end:
         files.append({
             "type": "end", "chapter": None, "page": None,
-            "title": _strip_html(data["end"].get("title", "结束")),
+            "title": _strip_html(_coerce_str(end.get("title", "结束"))),
             "source_key": "end", "body_key": "content",
             "narration_key": "narration",
             "file": "end.html", "text_file": "end.txt",
@@ -310,6 +329,7 @@ async def _run_generation(
                 name=name, description=description,
                 library_id=library_id, document_names=doc_names_str,
                 prompt_id=prompt_id, created_by=user_id, min_minutes=10,
+                created_at=datetime.now(),
             )
             session.add(material)
             await session.commit()
@@ -336,16 +356,18 @@ async def _run_generation(
                 manifest_pages = []
                 for entry in file_entries:
                     body_key = entry["body_key"]
-                    src = _get_nested(ai_data, entry["source_key"])
+                    src = _coerce_dict(_get_nested(ai_data, entry["source_key"]))
+                    title = _coerce_str(src.get("title", entry["title"]))
+                    body = _coerce_str(src.get(body_key, ""))
                     if entry["type"] == "cover":
-                        html_body = f'<h1 class="page-title">{src.get("title", entry["title"])}</h1>\n{src.get(body_key, "")}'
+                        html_body = f'<h1 class="page-title">{title}</h1>\n{body}'
                     elif entry["type"] in ("chapter_cover", "end"):
-                        html_body = f'<h2 class="page-title">{src.get("title", entry["title"])}</h2>\n{src.get(body_key, "")}'
+                        html_body = f'<h2 class="page-title">{title}</h2>\n{body}'
                     else:
-                        html_body = src.get(body_key, "")
+                        html_body = body
                     html = _render_page_html(entry["title"], html_body, entry["css_class"], page_css)
                     save_material_file(lib_dir, material.id, entry["file"], html)
-                    narration_text = src.get(entry.get("narration_key", ""), "")
+                    narration_text = _coerce_str(src.get(entry.get("narration_key", ""), ""))
                     save_material_file(lib_dir, material.id, entry["text_file"], narration_text)
                     manifest_pages.append(ManifestPage(
                         type=entry["type"], chapter=entry["chapter"], page=entry["page"],
@@ -370,6 +392,7 @@ async def _run_generation(
                 save_material_file(lib_dir, material.id, "manifest.json",
                     json.dumps({"id": material.id, "name": material.name, "created_at": str(material.created_at), "style": page_css, "pages": [p.model_dump() for p in manifest_pages]}, ensure_ascii=False, indent=2))
             except Exception:
+                logger.exception("Study material file generation failed for job %s", job_id)
                 delete_material_dir(lib_dir, material.id)
                 await session.delete(material)
                 await session.commit()

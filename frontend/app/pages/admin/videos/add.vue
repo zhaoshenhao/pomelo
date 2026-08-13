@@ -49,7 +49,7 @@
     <div v-if="creating" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
       <div class="bg-white rounded-2xl shadow-xl px-8 py-6 text-center">
         <div class="inline-block w-8 h-8 border-4 border-primary-400 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-sm text-gray-700 font-medium">正在上传并创建视频，请稍候...</p>
+        <p class="text-sm text-gray-700 font-medium">{{ creatingText }}</p>
       </div>
     </div>
   </div>
@@ -71,6 +71,7 @@ const creating = ref(false); const message = ref(""); const msgType = ref("succe
 const msgClass = computed(() => msgType.value === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200");
 
 const canCreate = computed(() => form.value.name.trim() && (source.value === "oss" ? ossSelected.value : file.value));
+const creatingText = computed(() => source.value === "local" ? "正在上传并创建视频，请稍候..." : "正在创建视频，请稍候...");
 
 function fmtSize(b) { if (!b) return ""; return b > 1048576 ? (b/1048576).toFixed(1)+"MB" : b > 1024 ? Math.round(b/1024)+"KB" : b+"B"; }
 

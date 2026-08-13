@@ -14,6 +14,10 @@ node_modules
 logs
 *.log
 
+# Playwright
+test-results/
+playwright-report/
+
 # Misc
 .DS_Store
 .fleet

@@ -214,7 +214,7 @@ class TestRewriteEndpoint:
         return admin_token, lib_id, approval_id
 
     @pytest.mark.asyncio
-    async def test_rewrite_style_no_style_id_400(self, client: AsyncClient):
+    async def test_rewrite_style_id_missing_400(self, client: AsyncClient):
         admin_token, _, approval_id = await self._setup(client)
         resp = await client.post(
             f"/api/approvals/{approval_id}/rewrite",
@@ -224,7 +224,7 @@ class TestRewriteEndpoint:
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_rewrite_style_not_found_404(self, client: AsyncClient):
+    async def test_rewrite_style_id_not_found_404(self, client: AsyncClient):
         admin_token, _, approval_id = await self._setup(client)
         resp = await client.post(
             f"/api/approvals/{approval_id}/rewrite",
@@ -234,7 +234,7 @@ class TestRewriteEndpoint:
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_rewrite_style_non_rewrite_type_not_found(self, client: AsyncClient):
+    async def test_rewrite_style_id_wrong_type_not_found(self, client: AsyncClient):
         admin_token, _, approval_id = await self._setup(client)
         resp = await client.post("/api/ai-prompts", json={
             "name": "study-prompt", "prompt": "learn", "prompt_type": "study",

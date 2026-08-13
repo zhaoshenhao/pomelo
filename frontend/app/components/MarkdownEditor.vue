@@ -27,17 +27,7 @@ import { syntaxHighlighting } from "@codemirror/language";
 import { markdownHighlightStyle } from "@/utils/markdownHighlight";
 import { defaultKeymap } from "@codemirror/commands";
 import { marked } from "marked";
-import hljs from "highlight.js";
-import "highlight.js/styles/github.css";
-
-marked.setOptions({
-  highlight: function (code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      return hljs.highlight(code, { language: lang }).value;
-    }
-    return hljs.highlightAuto(code).value;
-  },
-});
+import { sanitizeHtml } from "@/utils/sanitize";
 
 const props = defineProps({
   modelValue: { type: String, default: "" }
@@ -50,7 +40,7 @@ const hostRef = ref(null);
 let editorView = null;
 let resizeObserver = null;
 
-const renderedHtml = computed(() => marked(props.modelValue));
+const renderedHtml = computed(() => sanitizeHtml(marked(props.modelValue)));
 
 function toggleMode() {
   mode.value = mode.value === "edit" ? "view" : "edit";

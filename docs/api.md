@@ -1,6 +1,18 @@
 # API 手册
 
-Base URL: `http://localhost:8000/api`
+Base URL: `http://localhost:8080/api`（本地）；`https://pomelo.dev.youbanban.com/api`（测试环境）
+
+> 本手册为概述性参考。**完整、实时的接口清单请以运行中的 OpenAPI 文档为准**：`GET /docs`（Swagger UI）。
+
+## 异步生成模式（题库 / 学习资料）
+
+AI 生成耗时较长，以下接口采用「202 + job_id 轮询」异步模式：
+- `POST /question-banks/generate` → `202 {"data": {"job_id": "..."}}`
+- `GET /question-banks/generate/{job_id}` → `{"status": "running"|"done"|"failed", ...}`
+- `POST /study-materials/generate` → `202 {"data": {"job_id": "..."}}`
+- `GET /study-materials/generate/{job_id}` → 同上
+
+前端每 3 秒轮询一次，`done` 后取回资源 id。
 
 ## 统一响应格式
 

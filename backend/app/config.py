@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -61,6 +62,13 @@ class Settings(BaseSettings):
     OSS_ENDPOINT_INTERNAL: str = "oss-cn-shanghai-internal.aliyuncs.com"
     OSS_ENDPOINT_PUBLIC: str = "oss-cn-shanghai.aliyuncs.com"
     OSS_VIDEO_PREFIX: str = "videos/"
+
+    @field_validator("JWT_SECRET")
+    @classmethod
+    def _jwt_secret_required(cls, v: str, info) -> str:
+        if not v and info.data.get("APP_ENV") == "production":
+            raise ValueError("JWT_SECRET 不能为空（生产环境必须配置）")
+        return v
 
     @property
     def database_url(self) -> str:

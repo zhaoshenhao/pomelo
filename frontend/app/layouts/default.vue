@@ -11,23 +11,25 @@
           </div>
           <div>
             <h1 class="text-lg font-bold tracking-tight">Pomelo</h1>
-            <p class="text-xs text-primary-300">{{ userRoleLabel }}</p>
+            <p class="text-xs text-primary-300"><ClientOnly>{{ userRoleLabel }}</ClientOnly></p>
           </div>
         </div>
       </div>
 
       <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
-        <template v-for="(item, index) in visibleMenuItems" :key="item.path">
-          <div v-if="item.separator && index > 0" class="pt-3 mt-3 border-t border-white/10"></div>
-          <NuxtLink
-            :to="item.path"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition"
-            :class="isActive(item.path) ? 'bg-white/15 text-white font-medium' : 'text-primary-200 hover:bg-white/10 hover:text-white'"
-          >
-            <span class="text-base">{{ item.icon }}</span>
-            <span>{{ item.label }}</span>
-          </NuxtLink>
-        </template>
+        <ClientOnly>
+          <template v-for="(item, index) in visibleMenuItems" :key="item.path">
+            <div v-if="item.separator && index > 0" class="pt-3 mt-3 border-t border-white/10"></div>
+            <NuxtLink
+              :to="item.path"
+              class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition"
+              :class="isActive(item.path) ? 'bg-white/15 text-white font-medium' : 'text-primary-200 hover:bg-white/10 hover:text-white'"
+            >
+              <span class="text-base">{{ item.icon }}</span>
+              <span>{{ item.label }}</span>
+            </NuxtLink>
+          </template>
+        </ClientOnly>
       </nav>
 
       <div class="p-4 border-t border-white/10">
@@ -47,11 +49,13 @@
         </button>
 
         <div class="flex items-center gap-3 ml-auto">
-          <span
-            class="text-xs font-medium px-2.5 py-1 rounded-full"
-            :class="roleBadgeClass"
-          >{{ userRoleLabel }}</span>
-          <span class="text-sm text-gray-700 font-medium">{{ authStore.user?.username }}</span>
+          <ClientOnly>
+            <span
+              class="text-xs font-medium px-2.5 py-1 rounded-full"
+              :class="roleBadgeClass"
+            >{{ userRoleLabel }}</span>
+            <span class="text-sm text-gray-700 font-medium">{{ authStore.user?.username }}</span>
+          </ClientOnly>
         </div>
       </header>
 

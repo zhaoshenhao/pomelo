@@ -244,7 +244,7 @@
 <script setup>
 import { ref, computed } from "vue";
 
-definePageMeta({ middleware: ["auth", "admin"] });
+definePageMeta({ middleware: ["auth", "teacher"] });
 
 const authStore = useAuthStore();
 const { $api } = useNuxtApp();

@@ -293,7 +293,7 @@ async function submitPending() {
   });
   if (navigator.sendBeacon) {
     const runtime = useRuntimeConfig();
-    const apiBase = runtime.public.apiBase || "http://localhost:8080/api";
+    const apiBase = (typeof window !== "undefined" && window.POMELO_API_BASE) || runtime.public.apiBase || "http://localhost:8080/api";
     const blob = new Blob([payload], { type: "application/json" });
     navigator.sendBeacon(`${apiBase}/drills/answer`, blob);
   }

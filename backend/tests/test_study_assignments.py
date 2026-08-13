@@ -218,3 +218,26 @@ class TestStudyMaterialSummary:
         assert row["total_study_seconds"] == 180
         assert row["read_count"] == 1
         assert row["complete_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_summary_regenerate(self, client: AsyncClient, db_session: AsyncSession):
+        token = await _reg(client, "sms_tchr_regen")
+        mid = await _seed_material(client, db_session, token)
+        stu_tok = await _reg(client, "sms_stu_regen")
+        start = await client.get("/api/study-assignments/start", params={"material_id": mid}, headers={"Authorization": f"Bearer {stu_tok}"})
+        aid = start.json()["data"]["id"]
+        await client.post(f"/api/study-assignments/{aid}/complete", json={"seconds": 90}, headers={"Authorization": f"Bearer {stu_tok}"})
+
+        resp = await client.post(f"/api/study-materials/{mid}/summary/regenerate", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["stats"]["students_viewed"] == 1
+        assert data["stats"]["students_completed"] == 1
+        assert data["stats"]["total_watch_seconds"] == 90
+        assert any(s["name"] == "sms_stu_regen" and s["completed"] for s in data["students"])
+
+    @pytest.mark.asyncio
+    async def test_summary_regenerate_not_found(self, client: AsyncClient):
+        token = await _reg(client, "sms_tchr_regen404")
+        resp = await client.post("/api/study-materials/999999/summary/regenerate", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 404

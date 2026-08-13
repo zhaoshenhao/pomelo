@@ -34,6 +34,24 @@
 # 5. OSS WebUI: kubectl apply -f deploy/k8s/oss-webui.yaml (with <NAMESPACE> replaced)
 ```
 
+## OSS Static Website Config (one-time, per bucket)
+
+The frontend is a Nuxt SPA. Deep links (e.g. `/admin/question-banks`) only work if the OSS
+bucket's **error page (默认 404 页)** points to `200.html` (the SPA fallback shell) — NOT
+`index.html`. Set this in the OSS console, or via the Aliyun SDK:
+
+```python
+# Set OSS website config: index page = index.html, error page = 200.html
+import oss2
+from oss2.models import BucketWebsite
+b = oss2.Bucket(oss2.Auth('<AK>', '<SK>'), 'https://oss-cn-shanghai.aliyuncs.com', '<BUCKET>')
+b.put_bucket_website(BucketWebsite(index_file='index.html', error_file='200.html'))
+```
+
+- `index_file = index.html`  → `/` serves the workbench.
+- `error_file = 200.html`  → any unknown path serves the SPA shell (client-side routing).
+- Note: OSS serves the error page with HTTP 404 status even though the page renders correctly.
+
 ## DB Initialization (first deploy only)
 
 ```bash
@@ -88,7 +106,7 @@ curl https://pomelo.dev.youbanban.com/api/libraries
 | Deployment | `pomelo-backend` |
 | Service | `pomelo-backend:8080` |
 | PVC | `pomelo-storage` (NAS, /kf/docs) |
-| Ingress | `pomelo-ingress` (ALB) |
+| Ingress | `pomelo-ingress` (Kong, `kong-ext`) |
 | Secret | `pomelo-secrets` |
 | Secret | `regsecret` (ACR pull) |
 | OSS Service | `pomelo-oss-webui` (ClusterIP + Endpoints → OSS IP) |

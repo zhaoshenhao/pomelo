@@ -13,9 +13,9 @@ TAG="${1:-$(git -C /mnt/d/workspace/pomelo rev-parse --short HEAD)}"
 PUSH_LATEST=false
 if [ "${2:-}" = "-l" ]; then PUSH_LATEST=true; fi
 
-ACR_NS="ybbmb"           # TODO: replace with your ACR namespace
-ACR_EXTERNAL="registry.cn-shanghai.aliyuncs.com"
-ACR_INTERNAL="registry-vpc.cn-shanghai.aliyuncs.com"
+ACR_NS="${ACR_NS:-ybbmb}"
+ACR_EXTERNAL="${ACR_EXTERNAL:-registry.cn-shanghai.aliyuncs.com}"
+ACR_INTERNAL="${ACR_INTERNAL:-registry-vpc.cn-shanghai.aliyuncs.com}"
 IMAGE="pomelo-backend"
 
 cd /mnt/d/workspace/pomelo/backend

@@ -262,6 +262,19 @@ async def get_material_summary(
     session: AsyncSession = Depends(get_session),
     _: User = Depends(require_teacher_or_admin),
 ):
+    return success_response(await _compute_material_summary(material_id, session))
+
+
+@router.post("/{material_id}/summary/regenerate")
+async def regenerate_material_summary(
+    material_id: int,
+    session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_teacher_or_admin),
+):
+    return success_response(await _compute_material_summary(material_id, session), "已重新汇总")
+
+
+async def _compute_material_summary(material_id: int, session: AsyncSession) -> dict:
     material = (await session.execute(
         select(StudyMaterial).where(StudyMaterial.id == material_id)
     )).scalar_one_or_none()
@@ -305,15 +318,16 @@ async def get_material_summary(
             complete_count=a.complete_count if a else 0,
         ))
 
-    return success_response({
+    return {
         "stats": stats.model_dump(),
         "students": [si.model_dump() for si in student_items],
-    })
+    }
 
 
 
 
 _jobs: dict[str, dict] = {}
+_background_tasks: set[asyncio.Task] = set()
 
 
 async def _run_generation(
@@ -456,11 +470,13 @@ async def generate_material(
 
     job_id = uuid.uuid4().hex[:12]
     _jobs[job_id] = {"status": "running", "material_id": None, "error": None}
-    asyncio.create_task(_run_generation(
+    task = asyncio.create_task(_run_generation(
         job_id, request.name, request.description, request.library_id,
         doc_names_str, request.prompt_id, prompt.prompt, doc_contents,
         lib.local_path, current_user.id,
     ))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
     logger.info("Job %s created, background task scheduled", job_id)
     return success_response({"job_id": job_id}, "生成任务已启动")
 

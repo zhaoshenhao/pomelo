@@ -70,15 +70,19 @@ If reusing an existing in-cluster Redis (e.g., `testredis1-master` in mb-test), 
 ### 3.2 Static website hosting (test/prod)
 For each bucket:
 1. Bucket → Basic Settings → Static Pages
-2. Default page: `index.html`
-3. 404 page: `index.html` (SPA client-side routing fallback)
+2. Default page (索引页): `index.html`
+3. 404 page (错误页): `200.html` — 必须是 `200.html`（Nuxt SPA 回退壳），否则客户端路由（如 `/admin/question-banks`）会返回 404 + 工作台页
 4. Enable
 
 ### 3.3 Video bucket
 1. **Video**: `pomelo-video`, cn-shanghai, Standard, Private (backend SDK access)
 
 ### 3.4 OSS static LB IP
-The cn-shanghai OSS static website IP is `106.14.228.188`. Verify:
+OSS 静态网站 IP 按环境区分（见 `deploy/k8s/deploy.ps1`）：
+- test: `47.102.237.237`
+- prod: `106.14.228.188`
+
+Verify:
 ```bash
 nslookup pomelo-mb-test.oss-cn-shanghai.aliyuncs.com
 ```
@@ -115,16 +119,16 @@ Pomelo shares the existing NAS with kf (same file system, same path `/kf/docs`).
 
 ## 6. DNS (Domain)
 
-### 6.1 ALB Ingress IP
-After deploying the ingress, get the ALB IP:
+### 6.1 Kong Ingress IP
+Ingress 使用 Kong（`ingressClassName: kong-ext`，非 ALB）。获取 Kong 对外 LB 地址：
 ```bash
 kubectl get ingress pomelo-ingress -n mb-test -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 ```
 
 ### 6.2 DNS records
 Add CNAME or A records at DNS provider:
-- `pomelo.dev.youbanban.com` → (ALB IP)
-- `pomelo.youbanban.com` → (ALB IP)
+- `pomelo.dev.youbanban.com` → (Kong LB IP)
+- `pomelo.youbanban.com` → (Kong LB IP)
 
 ---
 
@@ -146,6 +150,9 @@ Fill `deploy/envs/test.env` and `deploy/envs/prod.env` with real values:
 | `REDIS_PASSWORD` | Redis password | (secure) |
 | `JWT_SECRET` | Random 64 chars | `openssl rand -base64 48` |
 | `DEEPSEEK_API_KEY` | DeepSeek API key | `sk-...` |
+| `AI_STUDY_MAX_TOKENS` | 学习资料生成 token 上限 | `256000` |
+| `AI_JSON_MODE` | DeepSeek JSON 输出模式 | `true` |
+| `REGISTRATION_ENABLED` | 是否开放注册 | `false`（生产） |
 | `CORS_ORIGINS` | Frontend domain | `https://pomelo.dev.youbanban.com` |
 | `OSS_ACCESS_KEY_ID` | OSS RAM user AK | `LTAI5...` |
 | `OSS_ACCESS_KEY_SECRET` | OSS RAM user SK | (secure) |
@@ -153,6 +160,8 @@ Fill `deploy/envs/test.env` and `deploy/envs/prod.env` with real values:
 | `OSS_ENDPOINT_INTERNAL` | OSS internal (k8s→oss) | `oss-cn-shanghai-internal.aliyuncs.com` |
 | `OSS_ENDPOINT_PUBLIC` | OSS public (playback) | `oss-cn-shanghai.aliyuncs.com` |
 | `OSS_VIDEO_PREFIX` | OSS video prefix | `videos/` |
+
+> 完整配置键见 `backend/.env.example` 和 `deploy/k8s/secret.txt`。
 
 ### 7.2 Apply secrets
 ```bash
@@ -226,7 +235,7 @@ curl https://pomelo.dev.youbanban.com/api/libraries
 ## 9. Troubleshooting
 
 ### OSS static site gives 403
-- Check ALB host-header rewrite working: `curl -H "Host: pomelo-mb-test.oss-cn-shanghai.aliyuncs.com" https://pomelo.dev.youbanban.com/`
+- Check Kong host-header rewrite working: `curl -H "Host: pomelo-mb-test.oss-cn-shanghai.aliyuncs.com" https://pomelo.dev.youbanban.com/`
 - If 403 persists, verify `oss-webui.yaml` Endpoints IP matches bucket IP (`nslookup`)
 - Fallback: deploy nginx proxy pod → `deploy/k8s/oss-static-nginx.yaml` (not included, create if needed)
 

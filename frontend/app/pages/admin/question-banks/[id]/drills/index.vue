@@ -5,13 +5,13 @@
         <NuxtLink to="/admin/question-banks" class="text-xs text-primary-600 hover:underline">&larr; 返回题库管理</NuxtLink>
         <h2 class="text-xl font-bold text-gray-900 mt-1">{{ summary?.qb_name || '训练汇总' }}</h2>
       </div>
-      <button @click="regenerate" :disabled="regenerating" class="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 disabled:opacity-50">{{ regenerating ? '汇总中...' : '重新汇总' }}</button>
+      <button @click="confirmRegen = true" :disabled="regenerating" class="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 disabled:opacity-50">{{ regenerating ? '汇总中...' : '重新汇总' }}</button>
     </div>
 
     <div v-if="loading" class="px-4 py-12 text-center text-gray-400 text-sm">加载中...</div>
-    <div v-else-if="error" class="px-4 py-12 text-center text-gray-400 text-sm">{{ error }}</div>
+    <div v-if="error" class="mb-4 px-4 py-3 rounded-xl text-sm bg-red-50 text-red-700 border border-red-200">{{ error }}</div>
 
-    <template v-else-if="summary">
+    <template v-if="summary">
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
           <div class="text-2xl font-bold text-primary-600">{{ summary.total_students }}</div>
@@ -35,7 +35,6 @@
         </div>
       </div>
 
-      <div v-if="message" class="text-xs text-green-600 mb-2">{{ message }}</div>
       <div class="text-xs text-gray-400 mb-2">汇总时间：{{ formatDate(summary.updated_at) }}</div>
 
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -65,11 +64,20 @@
         <div v-if="summary.questions.length === 0" class="px-4 py-12 text-center text-gray-400 text-sm">暂无题目数据</div>
       </div>
     </template>
+
+    <ConfirmModal :show="confirmRegen" title="确认重新汇总" message="将重新统计所有学生的训练数据，确定继续？" variant="danger" @confirm="regenerate" @cancel="confirmRegen = false" />
+
+    <div v-if="regenerating" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+      <div class="bg-white rounded-2xl shadow-xl px-8 py-6 text-center">
+        <div class="inline-block w-8 h-8 border-4 border-primary-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-sm text-gray-700 font-medium">正在重新汇总，请稍候...</p>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, nextTick } from "vue";
 definePageMeta({ middleware: ["auth", "teacher"] });
 const { $api } = useNuxtApp();
 const route = useRoute();
@@ -78,7 +86,7 @@ const summary = ref(null);
 const loading = ref(true);
 const error = ref("");
 const regenerating = ref(false);
-const message = ref("");
+const confirmRegen = ref(false);
 
 const TYPE_NAMES = { single: "单选", multiple: "多选", true_false: "判断", fill: "填空", match: "匹配" };
 
@@ -101,13 +109,13 @@ async function fetchSummary() {
 }
 
 async function regenerate() {
+  confirmRegen.value = false;
   regenerating.value = true;
   try {
     const r = await $api.post(`/drills/banks/${route.params.id}/summary/regenerate`);
     summary.value = r.data.data;
     error.value = "";
-    message.value = "已重新汇总";
-    setTimeout(() => { message.value = ""; }, 2000);
+    await nextTick();
   } catch (e) {
     error.value = e.response?.data?.detail || "汇总失败";
   } finally {

@@ -134,6 +134,7 @@ async def _resolve_names(
 
 
 _jobs: dict[str, dict] = {}
+_background_tasks: set[asyncio.Task] = set()
 
 
 async def _run_generation(
@@ -249,11 +250,13 @@ async def generate_question_bank(
 
     job_id = uuid.uuid4().hex[:12]
     _jobs[job_id] = {"status": "running", "result": None, "error": None}
-    asyncio.create_task(_run_generation(
+    task = asyncio.create_task(_run_generation(
         job_id, request.name, request.description, request.library_id,
         doc_names_str, request.prompt_id, prompt.prompt,
         doc_contents, current_user.id,
     ))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
     logger.info("Job %s created, background task scheduled", job_id)
     return success_response({"job_id": job_id}, "生成任务已启动")
 

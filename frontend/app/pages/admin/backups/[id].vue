@@ -102,17 +102,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { marked } from "marked";
-import hljs from "highlight.js";
-import "highlight.js/styles/github.css";
-
-marked.setOptions({
-  highlight: function (code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      return hljs.highlight(code, { language: lang }).value;
-    }
-    return hljs.highlightAuto(code).value;
-  },
-});
+import { sanitizeHtml } from "@/utils/sanitize";
 
 definePageMeta({ middleware: ["auth", "teacher"] });
 
@@ -139,7 +129,7 @@ const msgClass = computed(() =>
     : "bg-red-50 text-red-700 border border-red-200"
 );
 
-const renderedContent = computed(() => marked(displayContent.value));
+const renderedContent = computed(() => sanitizeHtml(marked(displayContent.value)));
 
 function formatDate(d) {
   return d ? d.substring(0, 16).replace("T", " ") : "";

@@ -46,7 +46,7 @@
     <div v-if="questionModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="questionModal = null">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 p-6 max-h-[85vh] overflow-y-auto">
         <h3 class="text-lg font-bold text-gray-900 mb-2">{{ questionModal.question_id }} · {{ typeLabel(questionModal.type) }}</h3>
-        <div class="text-sm text-gray-800 mb-4" v-html="questionModal.question"></div>
+        <div class="text-sm text-gray-800 mb-4" v-html="sanitizeHtml(questionModal.question)"></div>
         <div v-if="questionModal.type === 'single' || questionModal.type === 'multiple'" class="mb-4">
           <h4 class="text-xs font-bold text-gray-500 mb-1">选项</h4>
           <div v-for="opt in questionModal.options" :key="opt" class="text-xs py-1" :class="opt[0] === questionModal.answer || (questionModal.answers || []).includes(opt[0]) ? 'text-green-700 font-medium bg-green-50 -mx-1 px-1 rounded' : 'text-gray-600'">{{ opt }}</div>
@@ -70,6 +70,7 @@
 
 <script setup>
 import { ref, computed } from "vue";
+import { sanitizeHtml } from "@/utils/sanitize";
 definePageMeta({ middleware: ["auth", "teacher"] });
 const { $api } = useNuxtApp();
 const route = useRoute();

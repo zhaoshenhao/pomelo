@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import re
 
@@ -25,7 +24,6 @@ from app.services.file_service import (
     read_material_file,
 )
 
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/study-assignments", tags=["study_assignments"])
 

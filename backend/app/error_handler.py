@@ -42,7 +42,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         content={
             "code": 5000,
             "message": "系统内部错误",
-            "data": str(exc),
+            "data": None,
             "timestamp": timestamp,
             "request_id": request_id,
         },

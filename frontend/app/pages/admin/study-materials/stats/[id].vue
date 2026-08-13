@@ -1,11 +1,16 @@
 <template>
   <div>
-    <div class="mb-4"><NuxtLink to="/admin/study-materials" class="text-sm text-primary-600 hover:underline">&larr; 返回学习资料列表</NuxtLink></div>
+    <div class="mb-4 flex items-center justify-between">
+      <NuxtLink to="/admin/study-materials" class="text-sm text-primary-600 hover:underline">&larr; 返回学习资料列表</NuxtLink>
+      <button @click="confirmRegen = true" :disabled="regenerating" class="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed">{{ regenerating ? '汇总中...' : '重新汇总' }}</button>
+    </div>
     <h2 class="text-xl font-bold text-gray-900 mb-6">{{ stats?.material_name || '统计' }} - 学习统计</h2>
 
     <div v-if="loading" class="text-center text-gray-400 py-20">加载中...</div>
 
-    <template v-else-if="stats">
+    <div v-if="message" class="mb-4 px-4 py-3 rounded-xl text-sm bg-red-50 text-red-700 border border-red-200">{{ message }}</div>
+
+    <template v-if="stats">
       <div class="grid grid-cols-5 gap-4 mb-6">
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
           <div class="text-2xl font-bold text-primary-600">{{ stats.students_viewed }}</div>
@@ -62,11 +67,20 @@
         </div>
       </div>
     </template>
+
+    <ConfirmModal :show="confirmRegen" title="确认重新汇总" message="将重新统计学生学习情况，确定继续？" variant="danger" @confirm="regenerate" @cancel="confirmRegen = false" />
+
+    <div v-if="regenerating" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+      <div class="bg-white rounded-2xl shadow-xl px-8 py-6 text-center">
+        <div class="inline-block w-8 h-8 border-4 border-primary-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-sm text-gray-700 font-medium">正在重新汇总，请稍候...</p>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, nextTick } from "vue";
 definePageMeta({ middleware: ["auth", "teacher"] });
 const { $api } = useNuxtApp();
 const route = useRoute();
@@ -74,6 +88,9 @@ const route = useRoute();
 const stats = ref(null);
 const students = ref([]);
 const loading = ref(true);
+const regenerating = ref(false);
+const confirmRegen = ref(false);
+const message = ref("");
 
 function fmtDur(s) {
   if (!s) return "0:00";
@@ -85,15 +102,29 @@ function fmtDur(s) {
   return `${h}时${m % 60}分`;
 }
 
-async function fetchSummary() {
-  loading.value = true;
+async function fetchSummary(keepVisible = false) {
+  if (!keepVisible) loading.value = true;
   try {
     const r = await $api.get(`/study-materials/${route.params.id}/summary`);
     const d = r.data.data;
     stats.value = d.stats;
     students.value = d.students || [];
   } catch {} finally {
-    loading.value = false;
+    if (!keepVisible) loading.value = false;
+  }
+}
+
+async function regenerate() {
+  confirmRegen.value = false;
+  regenerating.value = true;
+  try {
+    await $api.post(`/study-materials/${route.params.id}/summary/regenerate`);
+    await fetchSummary(true);
+    await nextTick();
+  } catch (e) {
+    message.value = e.response?.data?.detail || "重新汇总失败";
+  } finally {
+    regenerating.value = false;
   }
 }
 

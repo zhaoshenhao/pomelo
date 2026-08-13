@@ -79,7 +79,8 @@ def get_stage_dir(stage_id: int) -> str:
 
 def save_stage_file(stage_id: int, filename: str, content: bytes | str) -> str:
     stage_dir = get_stage_dir(stage_id)
-    filepath = os.path.join(stage_dir, filename)
+    safe = sanitize_filename(os.path.basename(filename))
+    filepath = os.path.join(stage_dir, safe)
     if isinstance(content, str):
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(content)
@@ -138,8 +139,9 @@ def backup_library(directory_name: str) -> str:
 
 
 def _get_backup_path(directory_name: str, backup_filename: str) -> str:
+    safe = sanitize_filename(backup_filename)
     backup_root = os.path.join(get_docs_root(), "backup", directory_name)
-    return os.path.join(backup_root, backup_filename)
+    return os.path.join(backup_root, safe)
 
 
 def _parse_backup_timestamp(filename: str) -> datetime | None:
@@ -279,15 +281,6 @@ def read_material_file(library_dir: str, material_id: int, filename: str) -> str
         return f.read()
 
 
-def save_material_binary(library_dir: str, material_id: int, filename: str, data: bytes) -> str:
-    dir_path = os.path.join(get_material_library_dir(library_dir), str(material_id))
-    safe = sanitize_filename(filename)
-    filepath = os.path.join(dir_path, safe)
-    with open(filepath, "wb") as f:
-        f.write(data)
-    return filepath
-
-
 def get_material_file_path(library_dir: str, material_id: int, filename: str) -> str:
     dir_path = os.path.join(get_material_library_dir(library_dir), str(material_id))
     safe = sanitize_filename(filename)
@@ -326,15 +319,6 @@ def read_exam_file(exam_id: int, filename: str) -> str:
         raise ValueError("Invalid filename")
     with open(filepath, "r", encoding="utf-8") as f:
         return f.read()
-
-
-def get_exam_file_path(exam_id: int, filename: str) -> str:
-    dir_path = get_exam_dir(exam_id)
-    safe = sanitize_filename(filename)
-    filepath = os.path.join(dir_path, safe)
-    if not filepath.startswith(dir_path):
-        raise ValueError("Invalid filename")
-    return filepath
 
 
 def delete_exam_dir(exam_id: int) -> None:

@@ -87,8 +87,4 @@ pnpm approve-builds esbuild
 
 ## 初始账号
 
-| username | password | role |
-|----------|----------|------|
-| admin | admin123 | ADMIN |
-
-> 第一个注册用户自动成为 ADMIN。
+> **第一个注册用户自动成为 ADMIN**（无预置账号）。本地启动后，打开 `http://localhost:3000/register` 注册第一个用户即为管理员。

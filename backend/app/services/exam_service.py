@@ -1,7 +1,5 @@
-import logging
 
 
-logger = logging.getLogger(__name__)
 
 
 def _normalize(text: str) -> str:

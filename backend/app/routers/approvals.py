@@ -96,9 +96,14 @@ async def create_approval(
     await session.commit()
     await session.refresh(stage_doc)
 
-    save_stage_file(stage_doc.id, file.filename, content)
+    try:
+        safe_name = sanitize_filename(os.path.basename(file.filename))
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="文件名不合法")
 
-    suffix = os.path.splitext(file.filename)[1]
+    save_stage_file(stage_doc.id, safe_name, content)
+
+    suffix = os.path.splitext(safe_name)[1]
 
     import tempfile
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:

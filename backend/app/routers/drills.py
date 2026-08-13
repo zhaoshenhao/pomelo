@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 import random
 import uuid
 from datetime import datetime, timezone
@@ -33,12 +32,20 @@ from app.services.file_service import (
     save_drill_summary,
 )
 
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/drills", tags=["drills"])
 
 _sessions: dict[str, dict] = {}
 _lock = asyncio.Lock()
+_SESSION_TTL_SECONDS = 3600
+
+
+def _prune_sessions() -> None:
+    now = datetime.now(timezone.utc)
+    for sid in list(_sessions.keys()):
+        created = _sessions[sid].get("created_at")
+        if created is None or (now - created).total_seconds() > _SESSION_TTL_SECONDS:
+            _sessions.pop(sid, None)
 
 
 def _sanitize_question(q: dict) -> dict:
@@ -171,11 +178,13 @@ async def start_drill_session(
     selected = _select_questions(questions, bank_data, count)
 
     session_id = uuid.uuid4().hex
+    _prune_sessions()
     _sessions[session_id] = {
         "student_id": current_user.id,
         "qb_id": qb.id,
         "question_ids": [q["id"] for q in selected],
         "submitted": set(),
+        "created_at": datetime.now(timezone.utc),
     }
 
     sanitized = [_sanitize_question(q) for q in selected]
@@ -195,6 +204,10 @@ async def submit_drill_answer(
 ):
     ss = _sessions.get(request.session_id)
     if ss is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="训练会话不存在或已过期")
+    created = ss.get("created_at")
+    if created is None or (datetime.now(timezone.utc) - created).total_seconds() > _SESSION_TTL_SECONDS:
+        _sessions.pop(request.session_id, None)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="训练会话不存在或已过期")
     if ss["student_id"] != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问该训练会话")

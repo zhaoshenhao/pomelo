@@ -390,6 +390,30 @@ async def video_stats(
     })
 
 
+@router.post("/{video_id}/stats/regenerate")
+async def regenerate_video_stats(
+    video_id: int,
+    session: AsyncSession = Depends(get_session),
+    _: User = Depends(require_teacher_or_admin),
+):
+    v = (await session.execute(select(Video).where(Video.id == video_id))).scalar_one_or_none()
+    if v is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="视频不存在")
+
+    total_views = (await session.execute(
+        select(func.count()).select_from(VideoViewRecord).where(VideoViewRecord.video_id == video_id)
+    )).scalar() or 0
+    total_watch = (await session.execute(
+        select(func.coalesce(func.sum(VideoViewRecord.watch_seconds), 0)).where(VideoViewRecord.video_id == video_id)
+    )).scalar() or 0
+
+    v.total_views = int(total_views)
+    v.total_watch_seconds = int(total_watch)
+    await session.commit()
+
+    return success_response({"total_views": v.total_views, "total_watch_seconds": v.total_watch_seconds}, "已重新汇总")
+
+
 # ==================== Student endpoints ====================
 
 

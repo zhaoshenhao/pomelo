@@ -196,14 +196,6 @@ class ExamSubmitResponse(BaseModel):
     evaluation: str = ""
 
 
-class ExamResultResponse(BaseModel):
-    total_students: int
-    average_score: float
-    pass_rate: float
-    per_question_accuracy: list[dict] = []
-    knowledge_coverage: str = ""
-
-
 class ExamTakeResponse(BaseModel):
     id: int
     name: str

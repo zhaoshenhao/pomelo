@@ -22,10 +22,6 @@ class ApprovalJson(BaseModel):
     new_name: str = ""
 
 
-class StageDocumentCreateRequest(BaseModel):
-    library_id: int
-
-
 class StageDocumentResponse(BaseModel):
     id: int
     library_id: int
@@ -39,13 +35,6 @@ class StageDocumentResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
-
-
-class StageDocumentDetailResponse(StageDocumentResponse):
-    origin_content: str = ""
-    preview_content: str = ""
-    approval: ApprovalJson = ApprovalJson()
-    library_documents: list[dict] = []
 
 
 class MetaUpdateRequest(BaseModel):

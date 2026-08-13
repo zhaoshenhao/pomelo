@@ -1,5 +1,4 @@
 import json
-import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
@@ -28,7 +27,6 @@ from app.schemas.dashboard import (
 )
 from app.services.file_service import read_drill_data, read_exam_file, read_qb_file
 
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 

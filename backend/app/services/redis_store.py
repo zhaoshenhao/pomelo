@@ -112,18 +112,6 @@ async def delete_session(session_id: str) -> bool:
     return bool(deleted)
 
 
-async def touch_session(session_id: str, ttl: int | None = None) -> bool:
-    r = await get_redis()
-    if r is None:
-        return False
-    key = f"{SESSION_PREFIX}{session_id}"
-    if not await r.exists(key):
-        return False
-    ttl = ttl if ttl is not None else settings.SESSION_TTL
-    await r.expire(key, ttl)
-    return True
-
-
 async def delete_user_sessions(user_id: int) -> int:
     r = await get_redis()
     if r is None:

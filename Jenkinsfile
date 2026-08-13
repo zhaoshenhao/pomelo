@@ -13,6 +13,7 @@ pipeline {
         NAMESPACE = "${params.ENV == 'prod' ? 'mb-pr' : 'mb-test'}"
         DOMAIN = "${params.ENV == 'prod' ? 'pomelo.youbanban.com' : 'pomelo.dev.youbanban.com'}"
         OSS_BUCKET = "${params.ENV == 'prod' ? 'pomelo-mb-prod' : 'pomelo-mb-test'}"
+        OSS_IP = "${params.ENV == 'prod' ? '106.14.228.188' : '47.102.237.237'}"
         TOOLS = '/mnt/devops-tools'
         KUBECONFIG = '/mnt/kubeconf/config'
     }
@@ -111,12 +112,13 @@ pipeline {
                         . ${TOOLS}/env.sh
 
                         TMPDIR=\$(mktemp -d)
-                        for f in deploy/k8s/namespace.yaml deploy/k8s/pv-nas.yaml deploy/k8s/oss-webui.yaml deploy/k8s/backend/service.yaml deploy/k8s/backend/deployment.yaml deploy/k8s/ingress.yaml; do
+                        for f in deploy/k8s/namespace.yaml deploy/k8s/certificate.yaml deploy/k8s/pv-nas.yaml deploy/k8s/oss-webui.yaml deploy/k8s/oss-webui-plugin.yaml deploy/k8s/backend/service.yaml deploy/k8s/backend/deployment.yaml deploy/k8s/ingress.yaml; do
                             name=\$(basename \$f)
                             sed -e 's/<TAG>/${backendTag}/g' \\
                                 -e 's/<NAMESPACE>/${NAMESPACE}/g' \\
                                 -e 's/<DOMAIN>/${DOMAIN}/g' \\
                                 -e 's/<OSS_BUCKET>/${OSS_BUCKET}/g' \\
+                                -e 's/<OSS_IP>/${OSS_IP}/g' \\
                                 "\$f" > "\$TMPDIR/\$name"
                             echo "  apply \$name"
                             \$KUBECTL apply -f "\$TMPDIR/\$name"

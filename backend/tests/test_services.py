@@ -8,7 +8,7 @@ from app.services.document_parser import (
     parse_text,
     parse_xlsx,
 )
-from app.services.file_service import save_library_file
+from app.services.file_service import sanitize_filename, save_library_file
 
 
 class TestDocumentParser:
@@ -56,3 +56,13 @@ class TestFileService:
             assert f.read() == "# Hello"
         os.unlink(filepath)
         os.rmdir(os.path.dirname(filepath))
+
+    def test_sanitize_filename_rejects_traversal(self):
+        for bad in ("..", ".", "", "../evil", "evil/../x", "a\\b", "/etc/passwd"):
+            try:
+                sanitize_filename(bad)
+                assert False, f"should reject: {bad!r}"
+            except ValueError:
+                pass
+        assert sanitize_filename("normal.md") == "normal.md"
+        assert sanitize_filename("  spaced.md  ") == "spaced.md"

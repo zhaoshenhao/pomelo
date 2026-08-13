@@ -23,13 +23,15 @@ $ErrorActionPreference = "Stop"
 $KUBECTL = "kubectl"
 
 $CFG = @{
-    test = @{ NS = "mb-test" }
-    prod = @{ NS = "mb-pr"  }
+    test = @{ NS = "mb-test"; OSSBucket = "pomelo-mb-test"; OSSIP = "47.102.237.237" }
+    prod = @{ NS = "mb-pr"; OSSBucket = "pomelo-mb-prod"; OSSIP = "106.14.228.188" }
 }
 $c = $CFG[$Env]
 $NS = $c.NS
 
 $NS_PLACEHOLDER  = "<NAMESPACE>"
+$OSS_PLACEHOLDER = "<OSS_BUCKET>"
+$OSSIP_PLACEHOLDER = "<OSS_IP>"
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Pomelo One-Time Env Setup: $Env (namespace=$NS)" -ForegroundColor Cyan
@@ -43,12 +45,12 @@ Write-Host "  Namespace ready" -ForegroundColor Green
 
 # 2. ACR regsecret
 Write-Host "`n[2/5] Creating ACR pull secret (regsecret) ..." -ForegroundColor Yellow
-if (-not $AcsUser) { $AcsUser = Read-Host "ACR username" }
-if (-not $AcsPassword) { $AcsPassword = Read-Host "ACR password" -AsSecureString | ForEach-Object { [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($_)) } }
+if (-not $AcrUser) { $AcrUser = Read-Host "ACR username" }
+if (-not $AcrPassword) { $AcrPassword = Read-Host "ACR password" -AsSecureString | ForEach-Object { [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($_)) } }
 & $KUBECTL create secret docker-registry regsecret -n $NS `
     --docker-server=registry.cn-shanghai.aliyuncs.com `
-    --docker-username=$AcsUser `
-    --docker-password=$AcsPassword `
+    --docker-username=$AcrUser `
+    --docker-password=$AcrPassword `
     --dry-run=client -o yaml | & $KUBECTL apply -f -
 Write-Host "  regsecret created" -ForegroundColor Green
 
@@ -84,7 +86,7 @@ Write-Host "  PV + PVC applied" -ForegroundColor Green
 
 # 5. OSS WebUI Service + Endpoints
 Write-Host "`n[5/5] Applying OSS WebUI Service + Endpoints ..." -ForegroundColor Yellow
-$ossContent = (Get-Content "$PSScriptRoot\..\k8s\oss-webui.yaml" -Raw).Replace($NS_PLACEHOLDER, $NS)
+$ossContent = (Get-Content "$PSScriptRoot\..\k8s\oss-webui.yaml" -Raw).Replace($NS_PLACEHOLDER, $NS).Replace($OSS_PLACEHOLDER, $c.OSSBucket).Replace($OSSIP_PLACEHOLDER, $c.OSSIP)
 $ossContent | & $KUBECTL apply -f -
 Write-Host "  OSS WebUI applied" -ForegroundColor Green
 

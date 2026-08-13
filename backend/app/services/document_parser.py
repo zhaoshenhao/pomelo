@@ -1,11 +1,9 @@
-import logging
 import os
 
 import fitz
 from docx import Document as DocxDocument
 from openpyxl import load_workbook
 
-logger = logging.getLogger(__name__)
 
 
 def parse_text(filepath: str) -> str:
@@ -127,19 +125,6 @@ def convert_to_markdown(filepath: str) -> str:
     else:
         raise ValueError(f"不支持的文件格式: {ext}")
 
-
-def extract_text(filepath: str) -> str:
-    ext = os.path.splitext(filepath)[1].lower()
-    if ext == ".pdf":
-        return parse_pdf(filepath)
-    elif ext == ".docx":
-        return parse_docx(filepath)
-    elif ext == ".xlsx":
-        return parse_xlsx(filepath)
-    elif ext == ".xls":
-        return parse_xls(filepath)
-    else:
-        return parse_text(filepath)
 
 
 def _format_as_markdown(text: str) -> str:

@@ -11,7 +11,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase: "",
-      examDebug: "true",
+      examDebug: "false",
       examEstSingle: 60,
       examEstMultiple: 80,
       examEstTrueFalse: 45,

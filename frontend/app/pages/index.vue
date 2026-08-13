@@ -2,7 +2,7 @@
   <div>
     <div class="mb-6">
       <h2 class="text-xl font-bold text-gray-900">工作台</h2>
-      <p class="text-sm text-gray-500 mt-1">欢迎回来，{{ authStore.user?.username }}</p>
+      <p class="text-sm text-gray-500 mt-1">欢迎回来，<ClientOnly>{{ authStore.user?.username }}</ClientOnly></p>
     </div>
 
     <div v-if="loading" class="px-4 py-12 text-center text-gray-400 text-sm">加载中...</div>
@@ -164,7 +164,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref } from "vue";
 
 definePageMeta({ middleware: "auth" });
 
@@ -229,5 +229,7 @@ async function fetchDashboard() {
   }
 }
 
-fetchDashboard();
+if (process.client) {
+  fetchDashboard();
+}
 </script>

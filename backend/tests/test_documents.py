@@ -42,6 +42,14 @@ class TestDocumentUpload:
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_upload_path_traversal_filename_rejected(self, client: AsyncClient):
+        admin_token, teacher_token = await register_and_login_teacher(client)
+        lib_id = await create_library(client, admin_token)
+        files = {"file": ("..", b"# malicious", "text/markdown")}
+        resp = await client.post(f"/api/approvals?library_id={lib_id}", files=files, headers={"Authorization": f"Bearer {teacher_token}"})
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
     async def test_list_documents(self, client: AsyncClient):
         admin_token, teacher_token = await register_and_login_teacher(client)
         lib_id = await create_library(client, admin_token)

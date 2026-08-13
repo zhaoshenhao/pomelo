@@ -281,7 +281,7 @@ async def get_backup_documents(
     directory = get_library_directory(library.local_path)
     try:
         docs = list_backup_documents(directory, backup_filename)
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="备份文件不存在")
     return success_response(docs)
 

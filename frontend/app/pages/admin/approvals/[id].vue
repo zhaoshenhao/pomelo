@@ -179,17 +179,7 @@
 <script setup>
 import { ref, computed, nextTick } from "vue";
 import { marked } from "marked";
-import hljs from "highlight.js";
-import "highlight.js/styles/github.css";
-
-marked.setOptions({
-  highlight: function (code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      return hljs.highlight(code, { language: lang }).value;
-    }
-    return hljs.highlightAuto(code).value;
-  },
-});
+import { sanitizeHtml } from "@/utils/sanitize";
 
 definePageMeta({ middleware: ["auth", "teacher"] });
 
@@ -226,7 +216,7 @@ let rightScrollSyncing = false;
 
 const msgClass = computed(() => msgType.value === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200");
 
-const renderedPreview = computed(() => marked(previewContent.value));
+const renderedPreview = computed(() => sanitizeHtml(marked(previewContent.value)));
 
 function onLeftEditorReady(view) {
   leftEditorView.value = view;

@@ -1,4 +1,3 @@
-import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -11,7 +10,6 @@ from app.models.user import User
 from app.schemas.common import success_response
 from app.schemas.tag import TagCreateRequest, TagResponse, TagUpdateRequest
 
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tags", tags=["tags"])
 

@@ -68,8 +68,8 @@ $ports = @(8080, 3000); foreach ($p in $ports) { $conns = netstat -ano | Select-
 - 前端 `.vue` 文件未加 `lang="ts"`，禁止写 TypeScript 类型标注（如 `catch (e: any)`）
 
 ### 数据模型
-- - `User` (admin/teacher/student), `DocumentLibrary`, `Document`
-- `ApprovalProcess`, `ApprovalStep`, `BackupRecord`, `AIPrompt`, `StudyMaterial`, `Exam`, `ExamAssignment`
+- `User` (admin/teacher/student), `Department`, `StudentTag`, `DocumentLibrary`, `Document`, `StageDocument`
+- `AIPrompt`, `StudyMaterial`, `StudyAssignment`, `QuestionBank`, `Exam`, `ExamBatch`, `ExamAssignment`, `Video`, `VideoComment`, `VideoViewRecord`
 - 所有模型在 `app/models/__init__.py` 注册，Alembic 可自动检测
 
 ### 外部配置
@@ -84,16 +84,17 @@ $ports = @(8080, 3000); foreach ($p in $ports) { $conns = netstat -ano | Select-
 - 云端部署通过 K8s Secret (`pomelo-secrets`) 注入所有配置
 
 ### 审批流程
-- 4 步: semantic_check → content_review → preview → confirm
-- 创建审批时自动锁定给当前用户 (locked_by)
-- 其他人操作返回 409，Admin 可通过 `/approvals/{id}/lock` 强制解锁
+- `StageDocument` 状态机: `new → content_review → rewrite → preview → completed / deleted`
+- 上传文档先进暂存区，经语义检查/内容审核/预览后确认入库
+- 无锁机制（旧版的 locked_by / 409 / `/approvals/{id}/lock` 已移除）
 
 ### 已知约束
 - 第一个注册用户自动成为 admin
 - 所有文档最终转为 `.md` 格式存入文档库
-- 支持上传: `.txt`, `.md`, `.pdf`, `.docx`, `.xlsx`, `.xls`
+- 支持上传: `.txt`, `.md`, `.pdf`, `.docx`, `.xlsx`, `.xls`, `.pptx`
 - 备份按 SHA256 去重，文件名: `<库名>-<hash>.zip`
 - Student 角色无任何文档模块访问权限
+- 前端静态托管在 OSS，桶的「默认 404 页」必须设为 `200.html`（SPA 回退），否则客户端路由刷新会 404
 
 ---
 

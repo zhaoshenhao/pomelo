@@ -4,9 +4,9 @@ pipeline {
     parameters {
         choice(name: 'ENV', choices: ['test', 'prod'], description: '部署环境（必须选择）')
         booleanParam(name: 'DEPLOY_FRONTEND', defaultValue: false, description: '是否部署前端（上传 OSS）')
+        booleanParam(name: 'REBUILD_BACKEND', defaultValue: false, description: '是否重新构建后端镜像并推送')
+        string(name: 'BACKEND_VERSION', defaultValue: 'latest', description: '后端镜像版本/Tag（默认 latest）')
         booleanParam(name: 'DEPLOY_BACKEND', defaultValue: false, description: '是否部署后端（K8s）')
-        booleanParam(name: 'REBUILD_BACKEND', defaultValue: false, description: '后端是否重新构建并推送镜像')
-        string(name: 'BACKEND_VERSION', defaultValue: '', description: '后端镜像版本/Tag：重建时留空=git短哈希；使用已有版本时必填')
     }
 
     environment {
@@ -64,18 +64,10 @@ pipeline {
         }
 
         stage('Backend: Build & Push') {
-            when {
-                allOf {
-                    expression { params.DEPLOY_BACKEND }
-                    expression { params.REBUILD_BACKEND }
-                }
-            }
+            when { expression { params.REBUILD_BACKEND } }
             steps {
                 script {
-                    def backendTag = params.BACKEND_VERSION?.trim()
-                    if (!backendTag) {
-                        backendTag = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-                    }
+                    def backendTag = params.BACKEND_VERSION?.trim() ?: 'latest'
                     sh """#!/bin/bash
                         APPHOME=${TOOLS}
                         . ${TOOLS}/env.sh
@@ -103,10 +95,7 @@ pipeline {
             when { expression { params.DEPLOY_BACKEND } }
             steps {
                 script {
-                    def backendTag = env.BACKEND_TAG ?: params.BACKEND_VERSION?.trim()
-                    if (!backendTag) {
-                        error("BACKEND_VERSION is required (no rebuild, no existing tag)")
-                    }
+                    def backendTag = env.BACKEND_TAG ?: params.BACKEND_VERSION?.trim() ?: 'latest'
                     sh """#!/bin/bash
                         APPHOME=${TOOLS}
                         . ${TOOLS}/env.sh
@@ -135,7 +124,7 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline succeeded: ${params.ENV}, frontend=${params.DEPLOY_FRONTEND}, backend=${params.DEPLOY_BACKEND}"
+            echo "Pipeline succeeded: ${params.ENV}, frontend=${params.DEPLOY_FRONTEND}, rebuild=${params.REBUILD_BACKEND}, deploy=${params.DEPLOY_BACKEND}"
         }
         failure {
             echo "Pipeline FAILED: ${params.ENV}"
